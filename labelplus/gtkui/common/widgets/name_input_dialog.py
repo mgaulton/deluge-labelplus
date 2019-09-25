@@ -36,7 +36,7 @@
 
 import logging
 
-import gtk
+from gi.repository import Gtk, Gdk
 
 import deluge.component
 
@@ -77,7 +77,7 @@ class NameInputDialog(WidgetEncapsulator):
 
   # Section: Constants
 
-  GLADE_FILE = labelplus.common.get_resource("wnd_name_input.glade")
+  GLADE_FILE = labelplus.common.get_resource("wnd_name_input.ui")
   ROOT_WIDGET = "wnd_name_input"
 
   REQUEST_TIMEOUT = 10.0
@@ -86,8 +86,8 @@ class NameInputDialog(WidgetEncapsulator):
   TYPE_RENAME = "rename"
 
   DIALOG_SPECS = {
-    TYPE_ADD: (_(TITLE_ADD_LABEL), gtk.STOCK_ADD, STR_ADD_LABEL),
-    TYPE_RENAME: (_(TITLE_RENAME_LABEL), gtk.STOCK_EDIT, STR_RENAME_LABEL),
+    TYPE_ADD: (_(TITLE_ADD_LABEL), Gtk.STOCK_ADD, STR_ADD_LABEL),
+    TYPE_RENAME: (_(TITLE_RENAME_LABEL), Gtk.STOCK_EDIT, STR_RENAME_LABEL),
   }
 
   DIALOG_NAME = 0
@@ -126,7 +126,7 @@ class NameInputDialog(WidgetEncapsulator):
       self._set_parent_label(self._parent_id)
 
       # Keep window alive with cyclic reference
-      self._root_widget.set_data("owner", self)
+      #self._root_widget.set_data("owner", self)
 
       self._setup_widgets()
 
@@ -154,7 +154,7 @@ class NameInputDialog(WidgetEncapsulator):
     self._destroy_store()
 
     if self.valid:
-      self._root_widget.set_data("owner", None)
+      #self._root_widget.set_data("owner", None)
       super(NameInputDialog, self).destroy()
 
 
@@ -216,7 +216,7 @@ class NameInputDialog(WidgetEncapsulator):
             self._parent_id)):
         raise LabelPlusError(ERR_INVALID_PARENT)
 
-    name = unicode(self._txt_name.get_text(), "utf8")
+    name = self._txt_name.get_text()
     labelplus.common.label.validate_name(name)
 
     for id in self._store.get_descendent_ids(self._parent_id, max_depth=1):
@@ -241,13 +241,13 @@ class NameInputDialog(WidgetEncapsulator):
     spec = self.DIALOG_SPECS[self._type]
     self._wnd_name_input.set_title(spec[self.DIALOG_NAME])
     icon = self._wnd_name_input.render_icon(spec[self.DIALOG_ICON],
-      gtk.ICON_SIZE_SMALL_TOOLBAR)
+      Gtk.IconSize.SMALL_TOOLBAR)
     self._wnd_name_input.set_icon(icon)
 
     self._lbl_header.set_markup("<b>%s:</b>" % _(STR_PARENT))
 
-    self._img_error.set_from_stock(gtk.STOCK_DIALOG_ERROR,
-      gtk.ICON_SIZE_SMALL_TOOLBAR)
+    self._img_error.set_from_stock(Gtk.STOCK_DIALOG_ERROR,
+      Gtk.IconSize.SMALL_TOOLBAR)
 
     if self._type == self.TYPE_RENAME:
       self._btn_revert.show()
@@ -363,7 +363,7 @@ class NameInputDialog(WidgetEncapsulator):
     if not self._btn_ok.get_property("sensitive"):
       return
 
-    name = unicode(self._txt_name.get_text(), "utf8")
+    name = self._txt_name.get_text()
 
     if self._parent_id != ID_NULL:
       dest_name = "%s/%s" % (self._parent_fullname, name)
@@ -387,7 +387,7 @@ class NameInputDialog(WidgetEncapsulator):
   def _do_open_select_menu(self, *args):
 
     if self._menu:
-      self._menu.popup(None, None, None, 1, gtk.gdk.CURRENT_TIME)
+      self._menu.popup(None, None, None, None, 1, Gdk.CURRENT_TIME)
 
 
   def _do_toggle_fullname(self, *args):
@@ -444,14 +444,14 @@ class NameInputDialog(WidgetEncapsulator):
       self._select_parent_label(parent_id)
 
 
-    root_items = (((gtk.MenuItem, _(STR_NONE)), on_activate, ID_NULL),)
+    root_items = (((Gtk.MenuItem, _(STR_NONE)), on_activate, ID_NULL),)
 
     self._menu = LabelSelectionMenu(self._store.model, on_activate,
       root_items=root_items)
     if __debug__: RT.register(self._menu, __name__)
 
     items = labelplus.gtkui.common.gtklib.menu_add_items(self._menu, 1,
-      (((gtk.MenuItem, _(STR_PARENT)), on_activate_parent),))
+      (((Gtk.MenuItem, _(STR_PARENT)), on_activate_parent),))
     if __debug__: RT.register(items[0], __name__)
 
     self._menu.connect("show", on_show_menu)

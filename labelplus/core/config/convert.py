@@ -44,7 +44,7 @@ def post_map_v1_v2(spec, dict_in):
   def remove_v1_prefix(dict_in):
 
     labels = dict_in["labels"]
-    for id in labels.keys():
+    for id in list(labels.keys()):
       if id.startswith("-"):
         data = labels[id]
         del labels[id]
@@ -88,7 +88,7 @@ def post_map_v1_v2(spec, dict_in):
   convert_auto_queries(label_defaults, op)
 
   labels = dict_in["labels"]
-  for id in labels.keys():
+  for id in list(labels.keys()):
     if id in labelplus.common.label.RESERVED_IDS:
       del labels[id]
       continue

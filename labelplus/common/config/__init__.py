@@ -191,7 +191,7 @@ def init_config(config, defaults, version, specs):
       raise ValueError("Config file conversion v%s -> v%s not supported" %
         (file_ver, version))
 
-  for key in config.config.keys():
+  for key in list(config.config.keys()):
     if key not in defaults:
       del config.config[key]
 

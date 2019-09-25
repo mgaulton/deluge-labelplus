@@ -34,7 +34,7 @@
 #
 
 
-import cPickle
+import pickle
 import copy
 import datetime
 import logging
@@ -55,8 +55,7 @@ import labelplus.gtkui.common.gtklib.dnd
 from twisted.python.failure import Failure
 
 from deluge.ui.client import client
-from deluge.ui.client import DelugeRPCError
-from deluge.plugins.pluginbase import GtkPluginBase
+from deluge.plugins.pluginbase import Gtk3PluginBase
 
 from labelplus.common import LabelPlusError
 from labelplus.gtkui.common.label_store import LabelStore
@@ -96,7 +95,7 @@ log = logging.getLogger(__name__)
 labelplus.gtkui.common.gtklib.dnd.log.setLevel(logging.INFO)
 
 
-class GtkUI(GtkPluginBase):
+class GtkUI(Gtk3PluginBase):
 
   # Section: Initialization
 
@@ -212,7 +211,7 @@ class GtkUI(GtkPluginBase):
       try:
         func()
       except:
-        log.exception("Failed to run %s()", func.func_name)
+        log.exception("Failed to run %s()", func.__name__)
 
 
   def _unload_extensions(self):
@@ -302,14 +301,14 @@ class GtkUI(GtkPluginBase):
 
   def _update_daemon_config(self, config):
 
-    saved_daemons = deluge.component.get("ConnectionManager").config["hosts"]
+    saved_daemons = deluge.component.get("ConnectionManager").hostlist.get_hosts_info()
     if not saved_daemons:
       config["daemon"] = {}
     else:
       daemons = ["%s@%s:%s" % (x[3], x[1], x[2]) for x in saved_daemons]
 
       # Remove daemons from config if not in ConnectionManager hosts
-      for daemon in config["daemon"].keys():
+      for daemon in list(config["daemon"].keys()):
         if "@localhost:" in daemon or "@127.0.0.1:" in daemon:
           continue
 
@@ -354,10 +353,8 @@ class GtkUI(GtkPluginBase):
     def process_result(result):
 
       if isinstance(result, Failure):
-        if (isinstance(result.value, DelugeRPCError) and
-            result.value.exception_type == "LabelPlusError"):
-          log.error("%s: %s", STR_UPDATE,
-            LabelPlusError(result.value.exception_msg))
+        if failure.check(LabelPlusError):
+          log.error("%s: %s", STR_UPDATE, LabelPlusError(result.value.message))
           interval = THROTTLED_INTERVAL
         else:
           return result
@@ -374,7 +371,7 @@ class GtkUI(GtkPluginBase):
     labelplus.common.clean_calls(self._calls)
 
     if self.initialized:
-      pickled_time = cPickle.dumps(self.last_updated)
+      pickled_time = pickle.dumps(self.last_updated)
       deferred = client.labelplus.get_label_updates(pickled_time)
       labelplus.common.deferred_timeout(deferred, REQUEST_TIMEOUT, on_timeout,
         process_result, process_result)
@@ -385,7 +382,7 @@ class GtkUI(GtkPluginBase):
     if not result:
       return
 
-    update = cPickle.loads(result)
+    update = pickle.loads(result)
 
     log.debug("Update: Type: %s, Timestamp: %s", update.type,
       update.timestamp)
@@ -397,4 +394,4 @@ class GtkUI(GtkPluginBase):
       try:
         func(self.store)
       except:
-        log.exception("Failed to run %s()", func.func_name)
+        log.exception("Failed to run %s()", func.__name__)

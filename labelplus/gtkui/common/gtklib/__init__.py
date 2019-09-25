@@ -34,7 +34,7 @@
 #
 
 
-import gtk
+from gi.repository import Gtk, Gdk
 
 from labelplus.gtkui import RT
 
@@ -58,7 +58,7 @@ def liststore_create(types, rows):
   if not isinstance(types, (list, tuple)):
     types = (types,)
 
-  ls = gtk.ListStore(*types)
+  ls = Gtk.ListStore(*types)
 
   for values in rows:
     if not isinstance(values, (list, tuple)):
@@ -105,7 +105,7 @@ def menu_add_items(menu, pos, specs, *args):
 
 def menu_add_separator(menu, pos=-1):
 
-  sep = gtk.SeparatorMenuItem()
+  sep = Gtk.SeparatorMenuItem()
   menu.insert(sep, pos)
 
   if __debug__: RT.register(sep, __name__)
@@ -124,13 +124,13 @@ def widget_print_tree(widget, indent, step):
   else:
     extra = ""
 
-  print " "*(indent*step), widget, extra
+  print((" "*(indent*step), widget, extra))
 
-  if isinstance(widget, gtk.Container):
+  if isinstance(widget, Gtk.Container):
     for child in widget.get_children():
       widget_print_tree(child, indent+1, step)
 
-  if isinstance(widget, gtk.TreeView):
+  if isinstance(widget, Gtk.TreeView):
     for col in widget.get_columns():
       widget_print_tree(col, indent+1, step)
 
@@ -142,7 +142,7 @@ def widget_get_descendents(widget, types=(), count=-1):
     if count != -1 and len(descendents) >= count:
       return
 
-    if not isinstance(widget, gtk.Container):
+    if not isinstance(widget, Gtk.Container):
       return
 
     for child in widget.get_children():
@@ -158,7 +158,7 @@ def widget_get_descendents(widget, types=(), count=-1):
   return descendents
 
 
-class ImageMenuItem(gtk.ImageMenuItem):
+class ImageMenuItem(Gtk.ImageMenuItem):
 
   def __init__(self, stock_id=None, label=None, use_underline=True,
       accel_group=None):
@@ -169,3 +169,11 @@ class ImageMenuItem(gtk.ImageMenuItem):
       self.set_label(label)
 
     self.set_use_underline(use_underline)
+
+def safe_get_name(widget):
+  if isinstance(widget, Gtk.Buildable):
+    n = Gtk.Buildable.get_name(widget)
+    if n is not None:
+      return n
+
+  return widget.get_name()

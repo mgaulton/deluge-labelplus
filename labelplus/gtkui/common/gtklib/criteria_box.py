@@ -34,10 +34,10 @@
 #
 
 
-import gtk
+from gi.repository import Gtk
 
 
-class CriteriaBox(gtk.VBox):
+class CriteriaBox(Gtk.VBox):
 
   # Section: Constants
 
@@ -51,8 +51,8 @@ class CriteriaBox(gtk.VBox):
 
     def on_realize(widget):
 
-      if widget.parent:
-        widget.parent.queue_resize()
+      if widget.get_parent():
+        widget.get_parent().queue_resize()
 
 
     def add_row(widget):
@@ -70,15 +70,15 @@ class CriteriaBox(gtk.VBox):
     self._columns = []
     self._rows = []
 
-    button = gtk.Button("+")
+    button = Gtk.Button("+")
     button.set_size_request(25, -1)
     button.connect("clicked", add_row)
 
-    row = gtk.HBox(spacing=self._column_spacing)
-    row.pack_end(button, expand=False)
+    row = Gtk.HBox(spacing=self._column_spacing)
+    row.pack_end(button, False, True, 0)
 
     self._add_button_row = row
-    self.pack_start(self._add_button_row, expand=False)
+    self.pack_start(self._add_button_row, False, True, 0)
 
 
   # Section: Deinitialization
@@ -129,7 +129,7 @@ class CriteriaBox(gtk.VBox):
 
     for row in self._rows:
       child = create_func(*create_args)
-      row.pack_start(child, expand)
+      row.pack_start(child, expand, True, 0)
       row.reorder_child(child, pos)
 
     return pos
@@ -173,24 +173,24 @@ class CriteriaBox(gtk.VBox):
       indices = pairs[::2]
       values = pairs[1::2]
 
-    row = gtk.HBox(spacing=self._column_spacing)
+    row = Gtk.HBox(spacing=self._column_spacing)
 
     for i, spec in enumerate(self._columns):
       create_func, create_args, setter, getter, expand = spec
       child = create_func(*create_args)
-      row.pack_start(child, expand)
+      row.pack_start(child, expand, True, 0)
 
       if pairs and i in indices:
         setter(child, values[indices.index(i)])
 
-    button = gtk.Button("-")
+    button = Gtk.Button("-")
     button.set_size_request(25, -1)
     button.connect("clicked", remove_row)
 
-    row.pack_end(button, expand=False)
+    row.pack_end(button, False, True, 0)
     row.show_all()
 
-    self.pack_start(row, expand=False)
+    self.pack_start(row, False, True, 0)
     self._rows.append(row)
 
     self.reorder_child(self._add_button_row, -1)
@@ -271,7 +271,7 @@ class CriteriaBox(gtk.VBox):
     self.clear_rows()
 
     for row in rows:
-      pairs = [x for pair in zip(range(len(row)), row) for x in pair]
+      pairs = [x for pair in zip(list(range(len(row))), row) for x in pair]
       self.add_row(pairs)
 
 
@@ -281,23 +281,23 @@ class CriteriaBox(gtk.VBox):
 
     def create(default_text):
 
-      entry = gtk.Entry()
+      entry = Gtk.Entry()
       entry.set_text(default_text)
 
       return entry
 
 
-    return self.add_column(create, (default_text,), gtk.Entry.set_text,
-      gtk.Entry.get_text, pos, expand)
+    return self.add_column(create, (default_text,), Gtk.Entry.set_text,
+      Gtk.Entry.get_text, pos, expand)
 
 
   def add_combobox_column(self, model, text_column=0, pos=None, expand=False):
 
     def create(model, text_column):
 
-      combo = gtk.ComboBox(model)
-      renderer = gtk.CellRendererText()
-      combo.pack_start(renderer)
+      combo = Gtk.ComboBox.new_with_model(model)
+      renderer = Gtk.CellRendererText()
+      combo.pack_start(renderer, True) #, True, 0)
       combo.add_attribute(renderer, "text", text_column)
 
       if len(model) > 0:
@@ -307,4 +307,4 @@ class CriteriaBox(gtk.VBox):
 
 
     return self.add_column(create, (model, text_column),
-      gtk.ComboBox.set_active, gtk.ComboBox.get_active, pos, expand)
+      Gtk.ComboBox.set_active, Gtk.ComboBox.get_active, pos, expand)

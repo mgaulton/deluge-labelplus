@@ -84,7 +84,7 @@ def process_spec(spec, dict_in):
     if spec["map"].get("*") == "*":
       working_dict = dict_in
     else:
-      for src, dest in sorted(spec["map"].items(),
+      for src, dest in sorted(list(spec["map"].items()),
           key=lambda x: x[1].count("/")):
         mapped = labelplus.common.get_path_mapped_dict(dict_in, src, dest,
           spec["deepcopy"], spec["strict"])

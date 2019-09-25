@@ -47,7 +47,6 @@ import labelplus.common
 from twisted.python.failure import Failure
 
 from deluge.ui.client import client
-from deluge.ui.client import DelugeRPCError
 
 from labelplus.common import LabelPlusError
 
@@ -142,7 +141,7 @@ class StatusBarExt(object):
   def _install_status_item(self):
 
     self._status_item = self._status_bar.add_item(image=STATUS_ICON_FILE)
-    self._status_item._ebox.hide_all()
+    self._status_item._ebox.hide()
 
 
   def _uninstall_status_item(self):
@@ -172,10 +171,8 @@ class StatusBarExt(object):
     def process_result(result):
 
       if isinstance(result, Failure):
-        if (isinstance(result.value, DelugeRPCError) and
-            result.value.exception_type == "LabelPlusError"):
-          log.error("%s: %s", STR_UPDATE,
-            LabelPlusError(result.value.exception_msg))
+        if failure.check(LabelPlusError):
+          log.error("%s: %s", STR_UPDATE, LabelPlusError(result.value.message))
           interval = THROTTLED_INTERVAL
         else:
           return result
@@ -225,7 +222,7 @@ class StatusBarExt(object):
       labelplus.common.deferred_timeout(deferred, REQUEST_TIMEOUT, on_timeout,
         process_result, process_result)
     else:
-      self._status_item._ebox.hide_all()
+      self._status_item._ebox.hide()
       self._calls.append(twisted.internet.reactor.callLater(THROTTLED_INTERVAL,
         self._update_loop))
 

@@ -38,7 +38,7 @@ import copy
 import logging
 import os
 
-import gtk
+from gi.repository import Gtk
 import twisted.internet.reactor
 
 import deluge.component
@@ -47,6 +47,7 @@ import labelplus.common
 import labelplus.common.config
 import labelplus.common.config.autolabel
 import labelplus.gtkui.common.gtklib
+from labelplus.gtkui.common.gtklib import safe_get_name
 import labelplus.gtkui.config
 
 
@@ -79,7 +80,7 @@ from labelplus.common.literals import (
   ERR_TIMED_OUT,
 )
 
-GLADE_FILE = labelplus.common.get_resource("blk_preferences.glade")
+GLADE_FILE = labelplus.common.get_resource("blk_preferences.ui")
 ROOT_WIDGET = "blk_preferences"
 
 REQUEST_TIMEOUT = 10.0
@@ -87,11 +88,11 @@ REQUEST_TIMEOUT = 10.0
 CLEAR_TEST_DELAY = 2.0
 
 OP_MAP = {
-  gtk.CheckButton: ("set_active", "get_active"),
-  gtk.Entry: ("set_text", "get_text"),
-  gtk.Label: ("set_text", "get_text"),
-  gtk.RadioButton: ("set_active", "get_active"),
-  gtk.SpinButton: ("set_value", "get_value"),
+  Gtk.CheckButton: ("set_active", "get_active"),
+  Gtk.Entry: ("set_text", "get_text"),
+  Gtk.Label: ("set_text", "get_text"),
+  Gtk.RadioButton: ("set_active", "get_active"),
+  Gtk.SpinButton: ("set_value", "get_value"),
   AutolabelBox: ("set_all_row_values", "get_all_row_values"),
   RadioButtonGroup: ("set_active_value", "get_active_value"),
 }
@@ -144,8 +145,8 @@ class PreferencesExt(WidgetEncapsulator):
     self._lbl_daemon.set_markup("<b>%s</b>" % _(TITLE_DAEMON))
     self._lbl_defaults.set_markup("<b>%s</b>" % _(TITLE_LABEL_DEFAULTS))
 
-    self._img_error.set_from_stock(gtk.STOCK_DIALOG_ERROR,
-      gtk.ICON_SIZE_SMALL_TOOLBAR)
+    self._img_error.set_from_stock(Gtk.STOCK_DIALOG_ERROR,
+      Gtk.IconSize.SMALL_TOOLBAR)
 
     self._setup_radio_button_groups()
     self._setup_autolabel_box()
@@ -196,8 +197,8 @@ class PreferencesExt(WidgetEncapsulator):
 
     if __debug__: RT.register(prop_store, __name__)
 
-    cell = gtk.CellRendererText()
-    self._cmb_test_criteria.pack_start(cell)
+    cell = Gtk.CellRendererText()
+    self._cmb_test_criteria.pack_start(cell, True) #, True, 0)
     self._cmb_test_criteria.add_attribute(cell, "text", 0)
     self._cmb_test_criteria.set_model(prop_store)
     self._cmb_test_criteria.set_active(0)
@@ -210,7 +211,7 @@ class PreferencesExt(WidgetEncapsulator):
     def on_mapped(widget, event):
 
       # Sometimes a widget is mapped but does not immediately have allocation
-      if self._vp_criteria_area.allocation.x < 0:
+      if self._vp_criteria_area.get_allocation().x < 0:
         twisted.internet.reactor.callLater(0.1, widget.emit, "map-event",
           event)
         return
@@ -218,11 +219,11 @@ class PreferencesExt(WidgetEncapsulator):
       if widget.handler_is_connected(handle):
         widget.disconnect(handle)
 
-      self._vp_criteria_area.set_data("was_mapped", True)
+      self._vp_criteria_area.set_mapped(True)
 
       if self._plugin.config["common"]["prefs_pane_pos"] > -1:
         self._vp_criteria_area.set_position(
-          self._vp_criteria_area.allocation.height -
+          self._vp_criteria_area.get_allocation().height -
           self._plugin.config["common"]["prefs_pane_pos"])
 
         clamp_position(self._vp_criteria_area)
@@ -230,17 +231,17 @@ class PreferencesExt(WidgetEncapsulator):
 
     def clamp_position(widget, *args):
 
-      handle_size = widget.allocation.height - \
+      handle_size = widget.get_allocation().height - \
         widget.get_property("max-position")
-      max_dist = self._hb_test_criteria.allocation.height + handle_size*2
+      max_dist = self._hb_test_criteria.get_allocation().height + handle_size*2
       threshold = max_dist/2
 
-      if widget.allocation.height - widget.get_position() > threshold:
+      if widget.get_allocation().height - widget.get_position() > threshold:
         twisted.internet.reactor.callLater(0.1, widget.set_position,
-          widget.allocation.height - max_dist)
+          widget.get_allocation().height - max_dist)
       else:
         twisted.internet.reactor.callLater(0.1, widget.set_position,
-          widget.allocation.height)
+          widget.get_allocation().height)
 
 
     handle = self._eb_criteria_area.connect("map-event", on_mapped)
@@ -471,13 +472,13 @@ class PreferencesExt(WidgetEncapsulator):
       expanded = []
       for exp in self._exp_group:
         if exp.get_expanded():
-          expanded.append(exp.get_name())
+          expanded.append(safe_get_name(exp))
 
       self._plugin.config["common"]["prefs_state"] = expanded
 
-      if self._vp_criteria_area.get_data("was_mapped"):
+      if self._vp_criteria_area.get_mapped():
         self._plugin.config["common"]["prefs_pane_pos"] = \
-          self._vp_criteria_area.allocation.height - \
+          self._vp_criteria_area.get_allocation().height - \
           self._vp_criteria_area.get_position()
 
       self._plugin.config.save()
@@ -488,7 +489,7 @@ class PreferencesExt(WidgetEncapsulator):
   def _get_widget_values(self, widgets, options_out):
 
     for widget in widgets:
-      prefix, sep, name = widget.get_name().partition("_")
+      prefix, sep, name = safe_get_name(widget).partition("_")
       if sep and name in options_out:
         ops = OP_MAP.get(type(widget))
         if ops:
@@ -499,7 +500,7 @@ class PreferencesExt(WidgetEncapsulator):
   def _set_widget_values(self, widgets, options_in):
 
     for widget in widgets:
-      prefix, sep, name = widget.get_name().partition("_")
+      prefix, sep, name = safe_get_name(widget).partition("_")
       if sep and name in options_in:
         ops = OP_MAP.get(type(widget))
         if ops:
@@ -571,11 +572,11 @@ class PreferencesExt(WidgetEncapsulator):
   def _set_test_result(self, result):
 
     if result is not None:
-      icon = gtk.STOCK_YES if result else gtk.STOCK_NO
-      self._txt_test_criteria.set_icon_from_stock(gtk.ENTRY_ICON_SECONDARY,
+      icon = Gtk.STOCK_YES if result else Gtk.STOCK_NO
+      self._txt_test_criteria.set_icon_from_stock(Gtk.EntryIconPosition.SECONDARY,
         icon)
     else:
-      self._txt_test_criteria.set_icon_from_stock(gtk.ENTRY_ICON_SECONDARY,
+      self._txt_test_criteria.set_icon_from_stock(Gtk.EntryIconPosition.SECONDARY,
         None)
 
 
@@ -607,7 +608,7 @@ class PreferencesExt(WidgetEncapsulator):
 
     def on_response(widget, response):
 
-      if self.valid and response == gtk.RESPONSE_OK:
+      if self.valid and response == Gtk.ResponseType.OK:
         txt_widget.set_text(widget.get_filename())
 
       widget.destroy()
@@ -616,12 +617,12 @@ class PreferencesExt(WidgetEncapsulator):
     path_type = widget.name[widget.name.index("_")+1:widget.name.rindex("_")]
     txt_widget = self.__dict__["_txt_%s_path" % path_type]
 
-    dialog = gtk.FileChooserDialog(_(TITLE_SELECT_FOLDER),
+    dialog = Gtk.FileChooserDialog(_(TITLE_SELECT_FOLDER),
       self._blk_preferences.get_toplevel(),
-      gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+      Gtk.FileChooserAction.SELECT_FOLDER,
       (
-        gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-        gtk.STOCK_OK, gtk.RESPONSE_OK,
+        Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+        Gtk.STOCK_OK, Gtk.ResponseType.OK,
       )
     )
     if __debug__: RT.register(dialog, __name__)
@@ -637,7 +638,7 @@ class PreferencesExt(WidgetEncapsulator):
     dialog.show_all()
 
     widgets = labelplus.gtkui.common.gtklib.widget_get_descendents(dialog,
-      (gtk.ToggleButton,), 1)
+      (Gtk.ToggleButton,), 1)
     if widgets:
       location_toggle = widgets[0]
       location_toggle.set_active(False)
@@ -655,7 +656,7 @@ class PreferencesExt(WidgetEncapsulator):
     prop = labelplus.common.config.autolabel.PROPS[index]
 
     props = {
-      prop: [unicode(self._txt_test_criteria.get_text(), "utf8")]
+      prop: [self._txt_test_criteria.get_text()]
     }
 
     rules = self._crbox_autolabel_rules.get_all_row_values()

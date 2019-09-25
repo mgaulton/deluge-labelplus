@@ -103,13 +103,8 @@ class LabelPlusError(Exception):
 
 
 def extract_error(failure):
-
-  from deluge.ui.client import DelugeRPCError
-
-
-  if (isinstance(failure.value, DelugeRPCError) and
-      failure.value.exception_type == "LabelPlusError"):
-    return LabelPlusError(failure.value.exception_msg)
+  if failure.check(LabelPlusError):
+    return LabelPlusError(failure.value.message)
   else:
     return None
 
@@ -188,7 +183,7 @@ def copy_dict_value(src, dest, src_key, dest_key, use_deepcopy=False):
 # Cumulative dict update
 def update_dict(dest, src, use_deepcopy=False):
 
-  for key in src.keys():
+  for key in list(src.keys()):
     if key not in dest or not isinstance(src[key], dict):
       copy_dict_value(src, dest, key, key, use_deepcopy)
       continue
@@ -199,7 +194,7 @@ def update_dict(dest, src, use_deepcopy=False):
 
 def normalize_dict(dict_in, template):
 
-  for key in dict_in.keys():
+  for key in list(dict_in.keys()):
     if key not in template:
       del dict_in[key]
 
@@ -363,3 +358,6 @@ def get_path_mapped_dict(dict_in, path_in, path_out, use_deepcopy=False,
   recurse(dict_in, dict_out, 0, 0)
 
   return dict_out
+
+def cmp(a, b):
+    return (a > b) - (a < b) 

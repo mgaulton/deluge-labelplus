@@ -34,9 +34,10 @@
 #
 
 
-import gtk
+from gi.repository import Gtk
 
 import labelplus.gtkui.common.gtklib
+from labelplus.gtkui.common.gtklib import safe_get_name
 
 
 from labelplus.gtkui import RT
@@ -45,7 +46,7 @@ from labelplus.gtkui import RT
 from labelplus.common.label import RESERVED_IDS
 
 
-class LabelSelectionMenu(gtk.Menu):
+class LabelSelectionMenu(Gtk.Menu):
 
   # Section: Initialization
 
@@ -94,7 +95,7 @@ class LabelSelectionMenu(gtk.Menu):
     id_, data = model[iter_]
     name = data["name"]
 
-    item = gtk.MenuItem(name)
+    item = Gtk.MenuItem(name)
     item.set_name(id_)
     menu.append(item)
     self._items.append(item)
@@ -107,14 +108,14 @@ class LabelSelectionMenu(gtk.Menu):
       if on_activate:
         item.connect("activate", on_activate, id_)
     else:
-      submenu = gtk.Menu()
+      submenu = Gtk.Menu()
       item.set_submenu(submenu)
       self._menus.append(submenu)
       if __debug__: RT.register(submenu, __name__)
 
       if headers:
         self._items += labelplus.gtkui.common.gtklib.menu_add_items(submenu,
-          -1, (((gtk.MenuItem, name), on_activate, id_),))
+          -1, (((Gtk.MenuItem, name), on_activate, id_),))
         self._items.append(labelplus.gtkui.common.gtklib.menu_add_separator(
           submenu))
 
@@ -137,7 +138,7 @@ class LabelSelectionMenu(gtk.Menu):
     def find_item(menu):
 
       for child in menu.get_children():
-        name = child.get_name()
+        name = safe_get_name(child)
 
         if id_ == name:
           return child

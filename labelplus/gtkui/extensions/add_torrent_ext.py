@@ -36,7 +36,7 @@
 
 import logging
 
-import gtk
+from gi.repository import Gtk, Gdk
 
 import deluge.component
 
@@ -74,7 +74,7 @@ class AddTorrentExt(WidgetEncapsulator):
 
   # Section: Constants
 
-  GLADE_FILE = labelplus.common.get_resource("blk_add_torrent_ext.glade")
+  GLADE_FILE = labelplus.common.get_resource("blk_add_torrent_ext.ui")
   ROOT_WIDGET = "blk_add_torrent_ext"
 
   TORRENT_ID = 0
@@ -125,7 +125,7 @@ class AddTorrentExt(WidgetEncapsulator):
     def on_click(widget):
 
       if self._menu:
-        self._menu.popup(None, None, None, 1, gtk.gdk.CURRENT_TIME)
+        self._menu.popup(None, None, None, None, 1, Gdk.CURRENT_TIME)
 
 
     def on_toggle(widget):
@@ -144,10 +144,11 @@ class AddTorrentExt(WidgetEncapsulator):
 
   def _install_widgets(self):
 
-    widget = self._dialog.glade.get_widget("button_revert")
+    widget = self._dialog.builder.get_object("button_revert")
 
-    box = widget.get_ancestor(gtk.VBox)
-    box.pack_start(self._blk_add_torrent_ext, expand=False)
+    box = widget.get_ancestor(Gtk.Box).get_parent().get_ancestor(Gtk.Box)
+
+    box.pack_start(self._blk_add_torrent_ext, False, True, 0)
 
     box.child_set_property(self._blk_add_torrent_ext, "position",
       box.child_get_property(self._blk_add_torrent_ext, "position")-1)
@@ -158,19 +159,19 @@ class AddTorrentExt(WidgetEncapsulator):
     self._register_handler(self._view.get_selection(), "changed",
       self._on_selection_changed)
 
-    self._register_handler(self._dialog.glade.get_widget("button_revert"),
+    self._register_handler(self._dialog.builder.get_object("button_revert"),
       "clicked", self._do_revert)
 
-    self._register_handler(self._dialog.glade.get_widget("button_apply"),
+    self._register_handler(self._dialog.builder.get_object("button_apply"),
       "clicked", self._do_apply_to_all)
 
-    self._register_handler(self._dialog.glade.get_widget("button_remove"),
+    self._register_handler(self._dialog.builder.get_object("button_remove"),
       "clicked", self._on_remove_torrent)
 
-    self._register_handler(self._dialog.glade.get_widget("button_cancel"),
+    self._register_handler(self._dialog.builder.get_object("button_cancel"),
       "clicked", self._on_close)
 
-    self._register_handler(self._dialog.glade.get_widget("button_add"),
+    self._register_handler(self._dialog.builder.get_object("button_add"),
       "clicked", self._on_add_torrent)
 
 
@@ -184,7 +185,7 @@ class AddTorrentExt(WidgetEncapsulator):
         self._display_torrent_label(id)
 
 
-    items = (((gtk.MenuItem, _(STR_NONE)), on_activate, ID_NONE),)
+    items = (((Gtk.MenuItem, _(STR_NONE)), on_activate, ID_NONE),)
 
     self._menu = LabelSelectionMenu(self._store.model, on_activate,
       root_items=items)
@@ -381,8 +382,8 @@ class AddTorrentExt(WidgetEncapsulator):
 
   def _on_remove_torrent(self, widget):
 
-    ids = self._dialog.files.keys()
-    for key in self._mappings.keys():
+    ids = list(self._dialog.files.keys())
+    for key in list(self._mappings.keys()):
       if key not in ids:
         del self._mappings[key]
 
@@ -394,7 +395,7 @@ class AddTorrentExt(WidgetEncapsulator):
     log.info("Applying labels to the torrents added")
 
     reverse_map = {}
-    for torrent_id, label_id in self._mappings.iteritems():
+    for torrent_id, label_id in list(self._mappings.items()):
       if label_id in RESERVED_IDS or label_id not in self._store:
         continue
 
@@ -403,7 +404,7 @@ class AddTorrentExt(WidgetEncapsulator):
 
       reverse_map[label_id].append(torrent_id)
 
-    for label_id, torrent_ids in reverse_map.iteritems():
+    for label_id, torrent_ids in list(reverse_map.items()):
       client.labelplus.set_torrent_labels(torrent_ids, label_id)
 
     self._on_close(widget)

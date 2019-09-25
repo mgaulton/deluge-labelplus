@@ -34,11 +34,10 @@
 #
 
 
-import cPickle
+import pickle
 import logging
 
-import gobject
-import gtk
+from gi.repository import GObject, Gtk, Gdk
 
 import deluge.component
 
@@ -233,7 +232,7 @@ class TorrentViewExt(object):
 
     column = self._view.columns.get(DISPLAY_NAME)
     if column:
-      renderer = column.column.get_cell_renderers()[0]
+      renderer = column.column.get_cells()[0]
       column.column.set_cell_data_func(renderer, None)
 
       # Workaround for Deluge removing indices in the wrong order
@@ -359,8 +358,8 @@ class TorrentViewExt(object):
 
   def _create_context_menu(self):
 
-    item = gtk.MenuItem(DISPLAY_NAME)
-    item.set_submenu(gtk.Menu())
+    item = Gtk.MenuItem(DISPLAY_NAME)
+    item.set_submenu(Gtk.Menu())
 
     if __debug__: RT.register(item, __name__)
     if __debug__: RT.register(item.get_submenu(), __name__)
@@ -380,7 +379,7 @@ class TorrentViewExt(object):
     item = self._create_context_menu()
     item.get_submenu().append(self._create_filter_menu())
 
-    menu = gtk.Menu()
+    menu = Gtk.Menu()
     menu.append(item)
     menu.show_all()
 
@@ -475,8 +474,8 @@ class TorrentViewExt(object):
 
 
     root_items = (
-      ((gtk.MenuItem, _(STR_ALL)), on_activate, ID_ALL),
-      ((gtk.MenuItem, _(STR_NONE)), on_activate, ID_NONE),
+      ((Gtk.MenuItem, _(STR_ALL)), on_activate, ID_ALL),
+      ((Gtk.MenuItem, _(STR_NONE)), on_activate, ID_NONE),
     )
 
     menu = LabelSelectionMenu(self._store.model, on_activate,
@@ -485,12 +484,12 @@ class TorrentViewExt(object):
 
     items = labelplus.gtkui.common.gtklib.menu_add_items(menu, 2,
       (
-        ((gtk.MenuItem, _(STR_PARENT)), on_activate_parent),
-        ((gtk.MenuItem, _(STR_SELECTED)), on_activate_selected),
+        ((Gtk.MenuItem, _(STR_PARENT)), on_activate_parent),
+        ((Gtk.MenuItem, _(STR_SELECTED)), on_activate_selected),
       )
     )
 
-    root = gtk.MenuItem(_(TITLE_SET_FILTER))
+    root = Gtk.MenuItem(_(TITLE_SET_FILTER))
     root.set_submenu(menu)
 
     if __debug__: RT.register(menu, __name__)
@@ -529,16 +528,16 @@ class TorrentViewExt(object):
         items[0].show()
 
 
-    root_items = (((gtk.MenuItem, _(STR_NONE)), on_activate, ID_NONE),)
+    root_items = (((Gtk.MenuItem, _(STR_NONE)), on_activate, ID_NONE),)
 
     menu = LabelSelectionMenu(self._store.model, on_activate,
       root_items=root_items)
     menu.connect("show", on_show_menu)
 
     items = labelplus.gtkui.common.gtklib.menu_add_items(menu, 1,
-      (((gtk.MenuItem, _(STR_PARENT)), on_activate_parent),))
+      (((Gtk.MenuItem, _(STR_PARENT)), on_activate_parent),))
 
-    root = gtk.MenuItem(_(TITLE_SET_LABEL))
+    root = Gtk.MenuItem(_(TITLE_SET_LABEL))
     root.set_submenu(menu)
 
     if __debug__: RT.register(menu, __name__)
@@ -572,7 +571,7 @@ class TorrentViewExt(object):
         item.hide()
 
 
-    item = gtk.MenuItem(_(TITLE_LABEL_OPTIONS))
+    item = Gtk.MenuItem(_(TITLE_LABEL_OPTIONS))
     item.connect("activate", on_activate)
 
     self._menu.get_submenu().connect("show", on_show, item)
@@ -589,14 +588,15 @@ class TorrentViewExt(object):
     def on_drag_start(widget, context):
 
       torrent_ids = self._view.get_selected_torrents()
-      widget.set_data("dnd_data", torrent_ids)
+      widget._tv_dnd_data = torrent_ids
 
 
     def load_ids(widget, path, col, selection, *args):
 
-      torrent_ids = widget.get_data("dnd_data")
-      data = cPickle.dumps(torrent_ids)
-      selection.set("TEXT", 8, data)
+      #torrent_ids = widget.get_data("dnd_data")
+      torrent_ids = widget._tv_dnd_data
+      data = pickle.dumps(torrent_ids)
+      selection.set(Gdk.Atom.intern("TEXT", False), 8, data)
 
       return True
 
@@ -611,15 +611,15 @@ class TorrentViewExt(object):
       return (pixbuf, 0, 0)
 
 
-    icon_single = self._view.treeview.render_icon(gtk.STOCK_DND,
-      gtk.ICON_SIZE_DND)
-    icon_multiple = self._view.treeview.render_icon(gtk.STOCK_DND_MULTIPLE,
-      gtk.ICON_SIZE_DND)
+    icon_single = self._view.treeview.render_icon(Gtk.STOCK_DND,
+      Gtk.IconSize.DND)
+    icon_multiple = self._view.treeview.render_icon(Gtk.STOCK_DND_MULTIPLE,
+      Gtk.IconSize.DND)
 
     src_target = DragTarget(
       name="torrent_ids",
-      scope=gtk.TARGET_SAME_APP,
-      action=gtk.gdk.ACTION_MOVE,
+      scope=Gtk.TargetFlags.SAME_APP,
+      action=Gdk.DragAction.MOVE,
       data_func=load_ids,
     )
 
@@ -647,10 +647,10 @@ class TorrentViewExt(object):
     if not path_info:
       self._view.treeview.get_selection().unselect_all()
       if event.button == 3:
-        self._alt_menu.popup(None, None, None, event.button, event.time)
+        self._alt_menu.popup(None, None, None, None, event.button, event.time)
       return
 
-    if event.button == 1 and event.type == gtk.gdk._2BUTTON_PRESS:
+    if event.button == 1 and event.type == Gdk.EventType._2BUTTON_PRESS:
       if path_info[1] == self._get_view_column():
         ids = self.get_selected_torrent_labels()
         if self.is_filter(ids):

@@ -77,7 +77,7 @@ class AutolabelBox(CriteriaBox):
     self.show()
     size = self.size_request()
     self.remove(row)
-    self.set_size_request(size[0], -1)
+    self.set_size_request(size.width, -1)
 
 
   def get_all_row_values(self):
@@ -88,7 +88,10 @@ class AutolabelBox(CriteriaBox):
       row[FIELD_PROP] = PROPS[row[FIELD_PROP]]
       row[FIELD_OP] = OPS[row[FIELD_OP]]
       row[FIELD_CASE] = CASES[row[FIELD_CASE]]
-      row[FIELD_QUERY] = unicode(row[FIELD_QUERY], "utf8")
+      try:
+        row[FIELD_QUERY] = str(row[FIELD_QUERY], "utf8")
+      except (TypeError, UnicodeDecodeError):
+        pass
 
       rows[i] = tuple(row)
 

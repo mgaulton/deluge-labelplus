@@ -1,144 +1,145 @@
 <?xml version="1.0"?>
-<glade-interface>
+<interface>
+  <requires lib="gtk+" version="3.10"/>
   <!-- interface-requires gtk+ 2.16 -->
   <!-- interface-naming-policy toplevel-contextual -->
-  <widget class="GtkWindow" id="wnd_name_input">
+  <object class="GtkWindow" id="wnd_name_input">
     <property name="window_position">center-on-parent</property>
     <property name="destroy_with_parent">True</property>
     <property name="type_hint">dialog</property>
     <property name="skip_taskbar_hint">True</property>
     <property name="skip_pager_hint">True</property>
-    <signal name="delete_event" handler="do_close"/>
+    <signal handler="do_close" name="delete_event"/>
     <child>
-      <widget class="GtkAlignment" id="alignment1">
+      <object class="GtkAlignment" id="alignment1">
         <property name="visible">True</property>
         <property name="top_padding">5</property>
         <property name="bottom_padding">5</property>
         <property name="left_padding">5</property>
         <property name="right_padding">5</property>
         <child>
-          <widget class="GtkVBox" id="vbox1">
+          <object class="GtkVBox" id="vbox1">
             <property name="visible">True</property>
             <property name="orientation">vertical</property>
             <property name="spacing">3</property>
             <child>
-              <widget class="GtkVBox" id="blk_header">
+              <object class="GtkVBox" id="blk_header">
                 <property name="visible">True</property>
                 <property name="orientation">vertical</property>
                 <property name="spacing">3</property>
                 <child>
-                  <widget class="GtkHBox" id="hbox1">
+                  <object class="GtkHBox" id="hbox1">
                     <property name="visible">True</property>
                     <property name="spacing">3</property>
                     <child>
-                      <widget class="GtkHBox" id="hbox3">
+                      <object class="GtkHBox" id="hbox3">
                         <property name="visible">True</property>
                         <property name="spacing">5</property>
                         <child>
-                          <widget class="GtkLabel" id="lbl_header">
+                          <object class="GtkLabel" id="lbl_header">
                             <property name="visible">True</property>
                             <property name="xalign">0</property>
                             <property name="label">&lt;b&gt;Parent:&lt;/b&gt;</property>
                             <property name="use_markup">True</property>
-                          </widget>
+                          </object>
                           <packing>
                             <property name="expand">False</property>
                             <property name="position">0</property>
                           </packing>
                         </child>
                         <child>
-                          <widget class="GtkLabel" id="lbl_selected_label">
+                          <object class="GtkLabel" id="lbl_selected_label">
                             <property name="visible">True</property>
                             <property name="xalign">0</property>
                             <property name="use_markup">True</property>
                             <property name="selectable">True</property>
                             <property name="ellipsize">end</property>
-                          </widget>
+                          </object>
                           <packing>
                             <property name="position">1</property>
                           </packing>
                         </child>
-                      </widget>
+                      </object>
                       <packing>
                         <property name="position">0</property>
                       </packing>
                     </child>
                     <child>
-                      <widget class="GtkImage" id="img_error">
+                      <object class="GtkImage" id="img_error">
                         <property name="visible">True</property>
                         <property name="xpad">5</property>
-                      </widget>
+                      </object>
                       <packing>
                         <property name="expand">False</property>
                         <property name="position">1</property>
                       </packing>
                     </child>
                     <child>
-                      <widget class="GtkToggleButton" id="tgb_fullname">
+                      <object class="GtkToggleButton" id="tgb_fullname">
                         <property name="label">-/-</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
                         <property name="has_tooltip">True</property>
-                        <property name="tooltip" translatable="yes">Toggle fullname display</property>
-                        <signal name="toggled" handler="do_toggle_fullname"/>
-                      </widget>
+                        <property name="tooltip-text" translatable="yes">Toggle fullname display</property>
+                        <signal handler="do_toggle_fullname" name="toggled"/>
+                      </object>
                       <packing>
                         <property name="expand">False</property>
                         <property name="position">2</property>
                       </packing>
                     </child>
                     <child>
-                      <widget class="GtkButton" id="btn_select">
+                      <object class="GtkButton" id="btn_select">
                         <property name="label" translatable="yes">Select</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
-                        <signal name="clicked" handler="do_open_select_menu"/>
-                      </widget>
+                        <signal handler="do_open_select_menu" name="clicked"/>
+                      </object>
                       <packing>
                         <property name="expand">False</property>
                         <property name="position">3</property>
                       </packing>
                     </child>
-                  </widget>
+                  </object>
                   <packing>
                     <property name="expand">False</property>
                     <property name="position">0</property>
                   </packing>
                 </child>
                 <child>
-                  <widget class="GtkHSeparator" id="hseparator1">
+                  <object class="GtkHSeparator" id="hseparator1">
                     <property name="visible">True</property>
-                  </widget>
+                  </object>
                   <packing>
                     <property name="expand">False</property>
                     <property name="position">1</property>
                   </packing>
                 </child>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="position">0</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkHBox" id="hbox2">
+              <object class="GtkHBox" id="hbox2">
                 <property name="visible">True</property>
                 <property name="spacing">5</property>
                 <child>
-                  <widget class="GtkLabel" id="label1">
+                  <object class="GtkLabel" id="label1">
                     <property name="visible">True</property>
                     <property name="xalign">0</property>
                     <property name="label" translatable="yes">Name:</property>
-                  </widget>
+                  </object>
                   <packing>
                     <property name="expand">False</property>
                     <property name="position">0</property>
                   </packing>
                 </child>
                 <child>
-                  <widget class="GtkEntry" id="txt_name">
+                  <object class="GtkEntry" id="txt_name">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="has_focus">True</property>
@@ -147,30 +148,30 @@
                     <property name="invisible_char">&#x25CF;</property>
                     <property name="activates_default">True</property>
                     <property name="truncate_multiline">True</property>
-                    <signal name="changed" handler="do_check_input"/>
-                  </widget>
+                    <signal handler="do_check_input" name="changed"/>
+                  </object>
                   <packing>
                     <property name="position">1</property>
                   </packing>
                 </child>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="position">1</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkHButtonBox" id="hbuttonbox1">
+              <object class="GtkHButtonBox" id="hbuttonbox1">
                 <property name="visible">True</property>
                 <property name="spacing">3</property>
                 <property name="layout_style">end</property>
                 <child>
-                  <widget class="GtkButton" id="btn_revert">
+                  <object class="GtkButton" id="btn_revert">
                     <property name="label" translatable="yes">Revert</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
-                    <signal name="clicked" handler="do_revert"/>
-                  </widget>
+                    <signal handler="do_revert" name="clicked"/>
+                  </object>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">False</property>
@@ -178,13 +179,13 @@
                   </packing>
                 </child>
                 <child>
-                  <widget class="GtkButton" id="btn_cancel">
+                  <object class="GtkButton" id="btn_cancel">
                     <property name="label" translatable="yes">Cancel</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
-                    <signal name="clicked" handler="do_close"/>
-                  </widget>
+                    <signal handler="do_close" name="clicked"/>
+                  </object>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">False</property>
@@ -192,31 +193,31 @@
                   </packing>
                 </child>
                 <child>
-                  <widget class="GtkButton" id="btn_ok">
+                  <object class="GtkButton" id="btn_ok">
                     <property name="label" translatable="yes">OK</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="can_default">True</property>
                     <property name="has_default">True</property>
                     <property name="receives_default">True</property>
-                    <signal name="clicked" handler="do_submit"/>
-                  </widget>
+                    <signal handler="do_submit" name="clicked"/>
+                  </object>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">False</property>
                     <property name="position">2</property>
                   </packing>
                 </child>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="pack_type">end</property>
                 <property name="position">2</property>
               </packing>
             </child>
-          </widget>
+          </object>
         </child>
-      </widget>
+      </object>
     </child>
-  </widget>
-</glade-interface>
+  </object>
+</interface>

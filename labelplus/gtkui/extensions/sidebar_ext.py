@@ -34,11 +34,10 @@
 #
 
 
-import cPickle
+import pickle
 import logging
 
-import gobject
-import gtk
+from gi.repository import GObject, Gtk, Gdk
 
 import deluge.component
 
@@ -48,7 +47,7 @@ import labelplus.common.label
 from deluge.ui.client import client
 
 from labelplus.common import LabelPlusError
-from labelplus.gtkui.common.gtklib import ImageMenuItem
+from labelplus.gtkui.common.gtklib import ImageMenuItem, safe_get_name
 from labelplus.gtkui.common.widgets.name_input_dialog import AddLabelDialog
 from labelplus.gtkui.common.widgets.name_input_dialog import RenameLabelDialog
 
@@ -205,7 +204,7 @@ class SidebarExt(object):
 
     def restore_adjustment(value):
 
-      adj = self._tree.parent.get_vadjustment()
+      adj = self._tree.get_parent().get_vadjustment()
       upper = adj.get_upper() - adj.get_page_size()
 
       if value > upper:
@@ -218,12 +217,12 @@ class SidebarExt(object):
     self._store = store.copy()
     if __debug__: RT.register(self._store, __name__)
 
-    value = self._tree.parent.get_vadjustment().get_value()
-    gobject.idle_add(restore_adjustment, value)
+    value = self._tree.get_parent().get_vadjustment().get_value()
+    GObject.idle_add(restore_adjustment, value)
 
-    if self._tree.window:
-      self._tree.window.freeze_updates()
-      gobject.idle_add(self._tree.window.thaw_updates)
+    if self._tree.get_window():
+      self._tree.get_window().freeze_updates()
+      GObject.idle_add(self._tree.get_window().thaw_updates)
 
     selection = self._tree.get_selection()
     selection.handler_block_by_func(self._on_selection_changed)
@@ -280,7 +279,7 @@ class SidebarExt(object):
     if path:
       parent_path = path[:-1]
       if parent_path:
-        self._tree.expand_to_path(parent_path)
+        self._tree.expand_to_path(Gtk.TreePath.new_from_indices(parent_path))
 
       self._tree.scroll_to_cell(path)
       return path
@@ -292,7 +291,7 @@ class SidebarExt(object):
 
   def _create_label_tree(self):
 
-    def render_cell_data(column, cell, model, iter):
+    def render_cell_data(column, cell, model, iter, *data):
 
       id, data = model[iter]
 
@@ -319,9 +318,9 @@ class SidebarExt(object):
       return True
 
 
-    tree = gtk.TreeView()
-    column = gtk.TreeViewColumn(DISPLAY_NAME)
-    renderer = gtk.CellRendererText()
+    tree = Gtk.TreeView()
+    column = Gtk.TreeViewColumn(DISPLAY_NAME)
+    renderer = Gtk.CellRendererText()
 
     column.pack_start(renderer, False)
     column.set_cell_data_func(renderer, render_cell_data)
@@ -332,7 +331,7 @@ class SidebarExt(object):
     tree.set_enable_tree_lines(True)
     tree.set_search_equal_func(search_func)
     tree.set_model(self._store.model)
-    tree.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
+    tree.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
 
     tree.connect("button-press-event", self._on_button_pressed)
     tree.connect("row-collapsed", self._on_row_collapsed)
@@ -351,7 +350,7 @@ class SidebarExt(object):
     self._filterview.sidebar.add_tab(self._tree, MODULE_NAME, DISPLAY_NAME)
 
     # Override style so expanders are indented
-    name = self._tree.get_name()
+    name = safe_get_name(self._tree)
     path = self._tree.path()
 
     rc_string = """
@@ -359,8 +358,8 @@ class SidebarExt(object):
         widget '%s' style '%s'
     """ % (name, path, name)
 
-    gtk.rc_parse_string(rc_string)
-    gtk.rc_reset_styles(self._tree.get_toplevel().get_settings())
+    Gtk.rc_parse_string(rc_string)
+    Gtk.rc_reset_styles(self._tree.get_toplevel().get_settings())
 
 
   def _uninstall_label_tree(self):
@@ -443,17 +442,17 @@ class SidebarExt(object):
           items[i].hide()
 
 
-    menu = gtk.Menu()
+    menu = Gtk.Menu()
     menu.connect("show", on_show_menu)
 
     items = labelplus.gtkui.common.gtklib.menu_add_items(menu, 0, (
-      ((ImageMenuItem, gtk.STOCK_ADD, _("_Add Label")), on_add),
-      ((gtk.SeparatorMenuItem,),),
-      ((ImageMenuItem, gtk.STOCK_ADD, _("Add Sub_label")), on_sublabel),
-      ((ImageMenuItem, gtk.STOCK_EDIT, _("Re_name Label")), on_rename),
-      ((ImageMenuItem, gtk.STOCK_REMOVE, _("_Remove Label")), on_remove),
-      ((gtk.SeparatorMenuItem,),),
-      ((ImageMenuItem, gtk.STOCK_PREFERENCES, _("Label _Options")), on_option),
+      ((ImageMenuItem, Gtk.STOCK_ADD, _("_Add Label")), on_add),
+      ((Gtk.SeparatorMenuItem,),),
+      ((ImageMenuItem, Gtk.STOCK_ADD, _("Add Sub_label")), on_sublabel),
+      ((ImageMenuItem, Gtk.STOCK_EDIT, _("Re_name Label")), on_rename),
+      ((ImageMenuItem, Gtk.STOCK_REMOVE, _("_Remove Label")), on_remove),
+      ((Gtk.SeparatorMenuItem,),),
+      ((ImageMenuItem, Gtk.STOCK_PREFERENCES, _("Label _Options")), on_option),
     ))
 
     self._menu = menu
@@ -478,8 +477,8 @@ class SidebarExt(object):
 
       model = widget.get_model()
       iter_ = model.get_iter(path)
-      path_str = model.get_string_from_iter(iter_)
-      selection.set("TEXT", 8, path_str)
+      path_str = bytes(model.get_string_from_iter(iter_), encoding='utf8')
+      selection.set(Gdk.Atom.intern("TEXT", False), 8, path_str)
 
       return True
 
@@ -503,7 +502,7 @@ class SidebarExt(object):
     def receive_ids(widget, path, col, pos, selection, *args):
 
       try:
-        torrent_ids = cPickle.loads(selection.data)
+        torrent_ids = pickle.loads(selection.get_data())
       except:
         return False
 
@@ -523,7 +522,7 @@ class SidebarExt(object):
       id = model[path][LABEL_ID]
 
       try:
-        src_path = selection.data
+        src_path = str(selection.get_data(), encoding='utf8')
         src_id = model[src_path][LABEL_ID]
       except IndexError:
         return False
@@ -556,7 +555,7 @@ class SidebarExt(object):
       model = widget.get_model()
       dest_id = model[path][LABEL_ID]
 
-      src_path = selection.data
+      src_path = str(selection.get_data(), encoding='utf8')
       src_id = model[src_path][LABEL_ID]
       src_name = self._store[src_id]["name"]
 
@@ -574,12 +573,12 @@ class SidebarExt(object):
       return False
 
 
-    icon_single = self._tree.render_icon(gtk.STOCK_DND, gtk.ICON_SIZE_DND)
+    icon_single = self._tree.render_icon(Gtk.STOCK_DND, Gtk.IconSize.DND)
 
     src_target = DragTarget(
       name="label_row",
-      scope=gtk.TARGET_SAME_APP,
-      action=gtk.gdk.ACTION_MOVE,
+      scope=Gtk.TargetFlags.SAME_APP,
+      action=Gdk.DragAction.MOVE,
       data_func=load_row,
     )
 
@@ -591,18 +590,18 @@ class SidebarExt(object):
 
     ids_target = DragTarget(
       name="torrent_ids",
-      scope=gtk.TARGET_SAME_APP,
-      action=gtk.gdk.ACTION_MOVE,
-      pos=gtk.TREE_VIEW_DROP_INTO_OR_BEFORE,
+      scope=Gtk.TargetFlags.SAME_APP,
+      action=Gdk.DragAction.MOVE,
+      pos=Gtk.TreeViewDropPosition.INTO_OR_BEFORE,
       data_func=receive_ids,
       aux_func=check_dest_id,
     )
 
     row_target = DragTarget(
       name="label_row",
-      scope=gtk.TARGET_SAME_APP,
-      action=gtk.gdk.ACTION_MOVE,
-      pos=gtk.TREE_VIEW_DROP_INTO_OR_BEFORE,
+      scope=Gtk.TargetFlags.SAME_APP,
+      action=Gdk.DragAction.MOVE,
+      pos=Gtk.TreeViewDropPosition.INTO_OR_BEFORE,
       data_func=receive_row,
       aux_func=check_dest_row,
     )
@@ -662,7 +661,7 @@ class SidebarExt(object):
       if path:
         parent_path = path[:-1]
         if parent_path:
-          self._tree.expand_to_path(parent_path)
+          self._tree.expand_to_path(Gtk.TreePath.new_from_indices(parent_path))
 
         self._tree.get_selection().select_path(path)
         return True
@@ -682,7 +681,7 @@ class SidebarExt(object):
     path, column, cell_x, cell_y = path_info
     id, data = widget.get_model()[path]
 
-    if event.button == 1 and event.type == gtk.gdk._2BUTTON_PRESS:
+    if event.button == 1 and event.type == Gdk.EventType._2BUTTON_PRESS:
       if self._store.is_user_label(id):
         try:
           dialog = LabelOptionsDialog(self._plugin, id)
@@ -693,7 +692,7 @@ class SidebarExt(object):
           pass
     elif event.button == 3:
       self._menu.set_title(id)
-      self._menu.popup(None, None, None, event.button, event.time)
+      self._menu.popup(None, None, None, None, event.button, event.time)
       return True
 
 
@@ -742,7 +741,7 @@ class SidebarExt(object):
     child = widget.get_nth_page(page_num)
 
     if self._tree.is_ancestor(child):
-      gobject.idle_add(self._tree.get_selection().emit, "changed")
-    elif self._filterview.label_view.is_ancestor(child):
-      gobject.idle_add(self._filterview.label_view.get_selection().emit,
+      GObject.idle_add(self._tree.get_selection().emit, "changed")
+    elif self._filterview.treeview.is_ancestor(child):
+      GObject.idle_add(self._filterview.treeview.get_selection().emit,
         "changed")

@@ -34,7 +34,7 @@
 #
 
 
-import gtk
+from gi.repository import Gtk
 
 
 class RadioButtonGroup(object):

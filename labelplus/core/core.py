@@ -34,11 +34,12 @@
 #
 
 
-import cPickle
+import pickle
 import copy
 import datetime
 import logging
 import os
+from functools import cmp_to_key
 
 import twisted.internet
 
@@ -61,6 +62,7 @@ from deluge.plugins.pluginbase import CorePluginBase
 
 from labelplus.common import LabelUpdate
 from labelplus.common import LabelPlusError
+from labelplus.common import cmp
 
 
 from labelplus.common.literals import (
@@ -115,7 +117,7 @@ class Core(CorePluginBase):
 
     log.debug("Initializing %s...", self.__class__.__name__)
 
-    if not deluge.component.get("TorrentManager").session_started:
+    if deluge.component.get("TorrentManager").get_state() != 'Started':
       deluge.component.get("EventManager").register_event_handler(
         "SessionStartedEvent", self._on_session_started)
       log.debug("Waiting for session to start...")
@@ -212,6 +214,8 @@ class Core(CorePluginBase):
 
     log.debug("%s initialized", self.__class__.__name__)
 
+    self.__pending_labels = {}
+
 
   def _load_config(self):
 
@@ -299,7 +303,7 @@ class Core(CorePluginBase):
 
   def _normalize_mappings(self):
 
-    for id in self._mappings.keys():
+    for id in list(self._mappings.keys()):
       if id in self._torrents:
         if self._mappings[id] in self._labels:
           self._apply_torrent_options(id)
@@ -529,7 +533,7 @@ class Core(CorePluginBase):
   def get_labels_data(self, timestamp=None):
 
     if timestamp:
-      t = cPickle.loads(timestamp)
+      t = pickle.loads(timestamp)
     else:
       t = labelplus.common.DATETIME_010101
 
@@ -547,7 +551,7 @@ class Core(CorePluginBase):
   def get_label_updates(self, since=None):
 
     if since:
-      t = cPickle.loads(since)
+      t = pickle.loads(since)
     else:
       t = labelplus.common.DATETIME_010101
 
@@ -557,7 +561,7 @@ class Core(CorePluginBase):
     if t <= last_changed:
       u = LabelUpdate(LabelUpdate.TYPE_FULL, datetime.datetime.now(),
         self._get_labels_data())
-      return cPickle.dumps(u)
+      return pickle.dumps(u)
     else:
       return None
 
@@ -568,7 +572,7 @@ class Core(CorePluginBase):
   def get_label_updates_dict(self, since=None):
 
     if since:
-      t = cPickle.loads(since)
+      t = pickle.loads(since)
     else:
       t = labelplus.common.DATETIME_010101
 
@@ -581,7 +585,7 @@ class Core(CorePluginBase):
 
       return {
         "type": u.type,
-        "timestamp": cPickle.dumps(u.timestamp),
+        "timestamp": pickle.dumps(u.timestamp),
         "data": u.data
       }
     else:
@@ -716,9 +720,16 @@ class Core(CorePluginBase):
         label_id not in self._labels):
       raise LabelPlusError(ERR_INVALID_LABEL)
 
-    torrent_ids = [x for x in set(torrent_ids) if x in self._torrents]
-    if not torrent_ids:
+    existing_torrent_ids = [x for x in set(torrent_ids) if x in self._torrents]
+
+    for t in set(torrent_ids):
+      if t not in existing_torrent_ids:
+        self.__pending_labels[t] = label_id
+
+    if not existing_torrent_ids:
       return
+
+    torrent_ids = existing_torrent_ids
 
     for id in torrent_ids:
       self._set_torrent_label(id, label_id)
@@ -732,9 +743,15 @@ class Core(CorePluginBase):
   # Section: Public Callbacks
 
   @check_init
-  def on_torrent_added(self, torrent_id):
+  def on_torrent_added(self, torrent_id, from_state):
+    if from_state:
+        return
 
-    label_id = self._do_autolabel_torrent(torrent_id)
+    if torrent_id in self.__pending_labels:
+      label_id = self.__pending_labels.pop(torrent_id)
+      self._set_torrent_label(torrent_id, label_id)
+    else:
+      label_id = self._do_autolabel_torrent(torrent_id)
 
     if label_id != labelplus.common.label.ID_NONE:
       self._move_torrents([torrent_id])
@@ -817,7 +834,7 @@ class Core(CorePluginBase):
 
   def _normalize_options(self, options):
 
-    for key in options.keys():
+    for key in list(options.keys()):
       if key not in labelplus.common.config.OPTION_DEFAULTS:
         del options[key]
 
@@ -918,7 +935,7 @@ class Core(CorePluginBase):
 
     if key not in self._sorted_labels:
       self._sorted_labels[key] = sorted(self._labels,
-        cmp=key[0], reverse=key[1])
+        key=cmp_to_key(key[0]), reverse=key[1])
 
       self._timestamp["labels_sorted"] = datetime.datetime.now()
 
@@ -965,7 +982,7 @@ class Core(CorePluginBase):
     label_name = label_name.strip()
 
     try:
-      label_name = unicode(label_name, "utf8")
+      label_name = str(label_name, "utf8")
     except (TypeError, UnicodeDecodeError):
       pass
 
@@ -1002,7 +1019,7 @@ class Core(CorePluginBase):
     label_name = label_name.strip()
 
     try:
-      label_name = unicode(label_name, "utf8")
+      label_name = str(label_name, "utf8")
     except (TypeError, UnicodeDecodeError):
       pass
 
@@ -1063,7 +1080,7 @@ class Core(CorePluginBase):
     dest_name = dest_name.strip()
 
     try:
-      dest_name = unicode(dest_name, "utf8")
+      dest_name = str(dest_name, "utf8")
     except (TypeError, UnicodeDecodeError):
       pass
 
@@ -1114,7 +1131,7 @@ class Core(CorePluginBase):
   def _normalize_label_options(self, options,
       template=labelplus.common.config.LABEL_DEFAULTS):
 
-    for key in options.keys():
+    for key in list(options.keys()):
       if key not in template:
         del options[key]
 

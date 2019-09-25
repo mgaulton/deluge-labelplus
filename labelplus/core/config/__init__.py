@@ -39,24 +39,24 @@ import labelplus.common.config
 
 def remove_invalid_keys(dict_in):
 
-  for key in dict_in.keys():
+  for key in list(dict_in.keys()):
     if key not in labelplus.common.config.CONFIG_DEFAULTS:
       del dict_in[key]
 
-  for key in dict_in["prefs"].keys():
+  for key in list(dict_in["prefs"].keys()):
     if key not in labelplus.common.config.CONFIG_DEFAULTS["prefs"]:
       del dict_in["prefs"][key]
 
-  for key in dict_in["prefs"]["options"].keys():
+  for key in list(dict_in["prefs"]["options"].keys()):
     if key not in labelplus.common.config.OPTION_DEFAULTS:
       del dict_in["prefs"]["options"][key]
 
-  for key in dict_in["prefs"]["label"].keys():
+  for key in list(dict_in["prefs"]["label"].keys()):
     if key not in labelplus.common.config.LABEL_DEFAULTS:
       del dict_in["prefs"]["label"][key]
 
   for id in dict_in["labels"]:
     options = dict_in["labels"][id]["options"]
-    for key in options.keys():
+    for key in list(options.keys()):
       if key not in labelplus.common.config.LABEL_DEFAULTS:
         del options[key]

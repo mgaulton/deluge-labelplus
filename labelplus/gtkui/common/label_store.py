@@ -37,8 +37,7 @@
 import copy
 import logging
 
-import gobject
-import gtk
+from gi.repository import GObject, Gtk
 
 import labelplus.common.label
 import labelplus.gtkui.common.gtklib
@@ -46,6 +45,8 @@ import labelplus.gtkui.common.gtklib
 
 from labelplus.gtkui import RT
 
+
+from labelplus.common import cmp
 
 from labelplus.common.label import (
   ID_NULL, ID_ALL, ID_NONE, RESERVED_IDS,
@@ -127,7 +128,9 @@ class LabelStore(object):
   def get_model_iter(self, id_):
 
     if id_ in self._map and self.model:
-      return self.model.convert_child_iter_to_iter(None, self._map[id_])
+      success, it = self.model.convert_child_iter_to_iter(self._map[id_])
+      if success:
+          return it
 
     return None
 
@@ -208,7 +211,7 @@ class LabelStore(object):
 
     for id_ in data:
       try:
-        data[id_]["name"] = unicode(data[id_]["name"], "utf8")
+        data[id_]["name"] = str(data[id_]["name"], "utf8")
       except (TypeError, UnicodeDecodeError):
         pass
 
@@ -232,7 +235,7 @@ class LabelStore(object):
 
   def _build_store(self, data):
 
-    def data_sort_asc(model, iter1, iter2):
+    def data_sort_asc(model, iter1, iter2, *user_data):
 
       id1, data1 = model[iter1]
       id2, data2 = model[iter2]
@@ -250,7 +253,7 @@ class LabelStore(object):
       return cmp(data1["name"], data2["name"])
 
 
-    store = gtk.TreeStore(str, gobject.TYPE_PYOBJECT)
+    store = Gtk.TreeStore(str, GObject.TYPE_PYOBJECT)
     store_map = {}
 
     if __debug__: RT.register(store, __name__)
@@ -265,9 +268,9 @@ class LabelStore(object):
       iter_ = store.append(parent_iter, [id_, data[id_]])
       store_map[id_] = iter_
 
-    sorted_model = gtk.TreeModelSort(store)
+    sorted_model = Gtk.TreeModelSort(store)
     sorted_model.set_sort_func(self.LABEL_DATA, data_sort_asc)
-    sorted_model.set_sort_column_id(self.LABEL_DATA, gtk.SORT_ASCENDING)
+    sorted_model.set_sort_column_id(self.LABEL_DATA, Gtk.SortType.ASCENDING)
 
     if __debug__: RT.register(sorted_model, __name__)
 

@@ -38,7 +38,7 @@ import copy
 import logging
 import os
 
-import gtk
+from gi.repository import Gtk, Gdk
 import twisted.internet.defer
 import twisted.internet.reactor
 
@@ -48,6 +48,7 @@ import labelplus.common
 import labelplus.common.label
 import labelplus.common.config.autolabel
 import labelplus.gtkui.common.gtklib
+from labelplus.gtkui.common.gtklib import safe_get_name
 
 
 from twisted.python.failure import Failure
@@ -89,17 +90,17 @@ class LabelOptionsDialog(WidgetEncapsulator):
 
   # Section: Constants
 
-  GLADE_FILE = labelplus.common.get_resource("wnd_label_options.glade")
+  GLADE_FILE = labelplus.common.get_resource("wnd_label_options.ui")
   ROOT_WIDGET = "wnd_label_options"
 
   REQUEST_TIMEOUT = 10.0
   CLEAR_TEST_DELAY = 2.0
 
   OP_MAP = {
-    gtk.CheckButton: ("set_active", "get_active"),
-    gtk.Label: ("set_text", "get_text"),
-    gtk.RadioButton: ("set_active", "get_active"),
-    gtk.SpinButton: ("set_value", "get_value"),
+    Gtk.CheckButton: ("set_active", "get_active"),
+    Gtk.Label: ("set_text", "get_text"),
+    Gtk.RadioButton: ("set_active", "get_active"),
+    Gtk.SpinButton: ("set_value", "get_value"),
     AutolabelBox: ("set_all_row_values", "get_all_row_values"),
     RadioButtonGroup: ("set_active_value", "get_active_value"),
   }
@@ -135,7 +136,7 @@ class LabelOptionsDialog(WidgetEncapsulator):
       self._set_label(ID_NULL)
 
       # Keep window alive with cyclic reference
-      self._root_widget.set_data("owner", self)
+      #self._root_widget.set_data("owner", self)
 
       self._setup_widgets()
       self._index_widgets()
@@ -165,7 +166,7 @@ class LabelOptionsDialog(WidgetEncapsulator):
     self._destroy_store()
 
     if self.valid:
-      self._root_widget.set_data("owner", None)
+      #self._root_widget.set_data("owner", None)
       super(LabelOptionsDialog, self).destroy()
 
 
@@ -220,8 +221,8 @@ class LabelOptionsDialog(WidgetEncapsulator):
 
   def _get_path_type(self, widget):
 
-    path_type = widget.get_name()[
-      widget.get_name().index("_")+1:widget.get_name().rindex("_")]
+    widget_name = safe_get_name(widget)
+    path_type = widget_name[widget_name.index("_")+1:widget_name.rindex("_")]
 
     if path_type in PATH_TYPES:
       return path_type
@@ -350,14 +351,14 @@ class LabelOptionsDialog(WidgetEncapsulator):
       deluge.component.get("MainWindow").window)
 
     self._wnd_label_options.set_title(_(TITLE_LABEL_OPTIONS))
-    icon = self._wnd_label_options.render_icon(gtk.STOCK_PREFERENCES,
-      gtk.ICON_SIZE_SMALL_TOOLBAR)
+    icon = self._wnd_label_options.render_icon(Gtk.STOCK_PREFERENCES,
+      Gtk.IconSize.SMALL_TOOLBAR)
     self._wnd_label_options.set_icon(icon)
 
     self._lbl_header.set_markup("<b>%s:</b>" % _(STR_LABEL))
 
-    self._img_error.set_from_stock(gtk.STOCK_DIALOG_ERROR,
-      gtk.ICON_SIZE_SMALL_TOOLBAR)
+    self._img_error.set_from_stock(Gtk.STOCK_DIALOG_ERROR,
+      Gtk.IconSize.SMALL_TOOLBAR)
 
     self._btn_close.grab_focus()
 
@@ -417,10 +418,10 @@ class LabelOptionsDialog(WidgetEncapsulator):
       [_(x) for x in PROPS])
     if __debug__: RT.register(prop_store, __name__)
 
-    cell = gtk.CellRendererText()
+    cell = Gtk.CellRendererText()
     if __debug__: RT.register(cell, __name__)
 
-    self._cmb_test_criteria.pack_start(cell)
+    self._cmb_test_criteria.pack_start(cell, True) #, True, 0)
     self._cmb_test_criteria.add_attribute(cell, "text", 0)
     self._cmb_test_criteria.set_model(prop_store)
     self._cmb_test_criteria.set_active(0)
@@ -431,7 +432,7 @@ class LabelOptionsDialog(WidgetEncapsulator):
     def on_mapped(widget, event):
 
       # Sometimes a widget is mapped but does not immediately have allocation
-      if self._vp_criteria_area.allocation.x < 0:
+      if self._vp_criteria_area.get_allocation().x < 0:
         twisted.internet.reactor.callLater(0.1, widget.emit, "map-event",
           event)
         return
@@ -439,11 +440,11 @@ class LabelOptionsDialog(WidgetEncapsulator):
       if widget.handler_is_connected(handle):
         widget.disconnect(handle)
 
-      self._vp_criteria_area.set_data("was_mapped", True)
+      self._vp_criteria_area.set_mapped(True)
 
       if self._plugin.config["common"]["label_options_pane_pos"] > -1:
         self._vp_criteria_area.set_position(
-          self._vp_criteria_area.allocation.height -
+          self._vp_criteria_area.get_allocation().height -
           self._plugin.config["common"]["label_options_pane_pos"])
 
         clamp_position(self._vp_criteria_area)
@@ -451,17 +452,17 @@ class LabelOptionsDialog(WidgetEncapsulator):
 
     def clamp_position(widget, *args):
 
-      handle_size = widget.allocation.height - \
+      handle_size = widget.get_allocation().height - \
         widget.get_property("max-position")
-      max_dist = self._hb_test_criteria.allocation.height + handle_size*2
+      max_dist = self._hb_test_criteria.get_allocation().height + handle_size*2
       threshold = max_dist/2
 
-      if widget.allocation.height - widget.get_position() > threshold:
+      if widget.get_allocation().height - widget.get_position() > threshold:
         twisted.internet.reactor.callLater(0.1, widget.set_position,
-          widget.allocation.height - max_dist)
+          widget.get_allocation().height - max_dist)
       else:
         twisted.internet.reactor.callLater(0.1, widget.set_position,
-          widget.allocation.height)
+          widget.get_allocation().height)
 
 
     handle = self._eb_criteria_area.connect("map-event", on_mapped)
@@ -571,13 +572,13 @@ class LabelOptionsDialog(WidgetEncapsulator):
       expanded = []
       for exp in self._exp_group:
         if exp.get_expanded():
-          expanded.append(exp.get_name())
+          expanded.append(safe_get_name(exp))
 
       self._plugin.config["common"]["label_options_exp_state"] = expanded
 
-      if self._vp_criteria_area.get_data("was_mapped"):
+      if self._vp_criteria_area.get_mapped():
         self._plugin.config["common"]["label_options_pane_pos"] = \
-          self._vp_criteria_area.allocation.height - \
+          self._vp_criteria_area.get_allocation().height - \
           self._vp_criteria_area.get_position()
 
       self._plugin.config.save()
@@ -588,7 +589,7 @@ class LabelOptionsDialog(WidgetEncapsulator):
   def _get_widget_values(self, widgets, options_out):
 
     for widget in widgets:
-      prefix, sep, name = widget.get_name().partition("_")
+      prefix, sep, name = safe_get_name(widget).partition("_")
       if sep and name in options_out:
         ops = self.OP_MAP.get(type(widget))
         if ops:
@@ -599,7 +600,7 @@ class LabelOptionsDialog(WidgetEncapsulator):
   def _set_widget_values(self, widgets, options_in):
 
     for widget in widgets:
-      prefix, sep, name = widget.get_name().partition("_")
+      prefix, sep, name = safe_get_name(widget).partition("_")
       if sep and name in options_in:
         ops = self.OP_MAP.get(type(widget))
         if ops:
@@ -639,7 +640,7 @@ class LabelOptionsDialog(WidgetEncapsulator):
     widgets = self._option_groups[page]
 
     for widget in widgets:
-      prefix, sep, name = widget.get_name().partition("_")
+      prefix, sep, name = safe_get_name(widget).partition("_")
       if sep and name in self._label_defaults:
         options_out[name] = copy.deepcopy(self._label_defaults[name])
 
@@ -700,11 +701,11 @@ class LabelOptionsDialog(WidgetEncapsulator):
   def _set_test_result(self, result):
 
     if result is not None:
-      icon = gtk.STOCK_YES if result else gtk.STOCK_NO
-      self._txt_test_criteria.set_icon_from_stock(gtk.ENTRY_ICON_SECONDARY,
+      icon = Gtk.STOCK_YES if result else Gtk.STOCK_NO
+      self._txt_test_criteria.set_icon_from_stock(Gtk.EntryIconPosition.SECONDARY,
         icon)
     else:
-      self._txt_test_criteria.set_icon_from_stock(gtk.ENTRY_ICON_SECONDARY,
+      self._txt_test_criteria.set_icon_from_stock(Gtk.EntryIconPosition.SECONDARY,
         None)
 
 
@@ -733,7 +734,7 @@ class LabelOptionsDialog(WidgetEncapsulator):
   def _do_open_select_menu(self, *args):
 
     if self._menu:
-      self._menu.popup(None, None, None, 1, gtk.gdk.CURRENT_TIME)
+      self._menu.popup(None, None, None, None, 1, Gdk.CURRENT_TIME)
 
 
   def _do_revert_to_defaults(self, widget):
@@ -789,7 +790,7 @@ class LabelOptionsDialog(WidgetEncapsulator):
 
     def on_response(widget, response):
 
-      if self.valid and response == gtk.RESPONSE_OK:
+      if self.valid and response == Gtk.ResponseType.OK:
         txt_widget.set_text(widget.get_filename())
 
       widget.destroy()
@@ -798,11 +799,11 @@ class LabelOptionsDialog(WidgetEncapsulator):
     path_type = self._get_path_type(widget)
     txt_widget = self.__dict__["_txt_%s_path" % path_type]
 
-    dialog = gtk.FileChooserDialog(_(TITLE_SELECT_FOLDER),
-      self._wnd_label_options, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+    dialog = Gtk.FileChooserDialog(_(TITLE_SELECT_FOLDER),
+      self._wnd_label_options, Gtk.FileChooserAction.SELECT_FOLDER,
       (
-        gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-        gtk.STOCK_OK, gtk.RESPONSE_OK,
+        Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+        Gtk.STOCK_OK, Gtk.ResponseType.OK,
       )
     )
     if __debug__: RT.register(dialog, __name__)
@@ -818,7 +819,7 @@ class LabelOptionsDialog(WidgetEncapsulator):
     dialog.show_all()
 
     widgets = labelplus.gtkui.common.gtklib.widget_get_descendents(dialog,
-      (gtk.ToggleButton,), 1)
+      (Gtk.ToggleButton,), 1)
     if widgets:
       location_toggle = widgets[0]
       location_toggle.set_active(False)
@@ -838,7 +839,7 @@ class LabelOptionsDialog(WidgetEncapsulator):
     prop_name = PROPS[index]
 
     props = {
-      prop_name: [unicode(self._txt_test_criteria.get_text(), "utf8")]
+      prop_name: [self._txt_test_criteria.get_text()]
     }
 
     rules = self._crbox_autolabel_rules.get_all_row_values()
@@ -887,8 +888,8 @@ class LabelOptionsDialog(WidgetEncapsulator):
 
     items = labelplus.gtkui.common.gtklib.menu_add_items(self._menu, 0,
       (
-        ((gtk.MenuItem, _(STR_PARENT)), on_activate_parent),
-        ((gtk.SeparatorMenuItem,),),
+        ((Gtk.MenuItem, _(STR_PARENT)), on_activate_parent),
+        ((Gtk.SeparatorMenuItem,),),
       )
     )
 

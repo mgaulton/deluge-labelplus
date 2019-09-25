@@ -34,10 +34,10 @@
 #
 
 
-import gtk.glade
+from gi.repository import Gtk
 
 from labelplus.gtkui import RT
-
+from labelplus.gtkui.common.gtklib import safe_get_name
 
 class WidgetEncapsulator(object):
 
@@ -49,16 +49,17 @@ class WidgetEncapsulator(object):
 
     self._attr_prefix = attr_prefix
 
-    self._model = gtk.glade.XML(filename, root)
+    self._model = Gtk.Builder.new_from_file(filename)
     if __debug__: RT.register(self._model, __name__)
 
-    self._root_widget = self._model.get_widget(root)
+    self._root_widget = self._model.get_object(root)
 
-    self._widgets = self._model.get_widget_prefix("")
+    self._widgets = [w for w in self._model.get_objects() if isinstance(w, Gtk.Buildable)]
     for widget in self._widgets:
       if __debug__: RT.register(widget, __name__)
 
-      name = self._attr_prefix + widget.get_name()
+      name = self._attr_prefix + safe_get_name(widget)
+
       if not hasattr(self, name):
         setattr(self, name, widget)
 
@@ -71,20 +72,20 @@ class WidgetEncapsulator(object):
 
   def get_widgets(self, prefix=""):
 
-    return [x for x in self._widgets if x.get_name().startswith(prefix)]
+    return [x for x in self._widgets if safe_get_name(x).startswith(prefix)]
 
 
   def connect_signals(self, map_):
 
     if self._model:
-      self._model.signal_autoconnect(map_)
+      self._model.connect_signals(map_)
 
 
   def destroy(self):
 
     while self._widgets:
       widget = self._widgets.pop()
-      name = self._attr_prefix + widget.get_name()
+      name = self._attr_prefix + safe_get_name(widget)
 
       attr_widget = getattr(self, name, None)
       if attr_widget is widget:

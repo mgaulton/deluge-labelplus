@@ -36,9 +36,7 @@
 
 import logging
 
-import gobject
-import gtk
-
+from gi.repository import GObject, Gtk, Gdk
 
 log = logging.getLogger(__name__)
 
@@ -46,17 +44,17 @@ log = logging.getLogger(__name__)
 class DragTarget(object):
 
   ACTIONS = (
-    gtk.gdk.ACTION_COPY,
-    gtk.gdk.ACTION_MOVE,
-    gtk.gdk.ACTION_LINK,
-    gtk.gdk.ACTION_ASK,
+    Gdk.DragAction.COPY,
+    Gdk.DragAction.MOVE,
+    Gdk.DragAction.LINK,
+    Gdk.DragAction.ASK,
   )
 
   POSITIONS = (
-    gtk.TREE_VIEW_DROP_BEFORE,
-    gtk.TREE_VIEW_DROP_AFTER,
-    gtk.TREE_VIEW_DROP_INTO_OR_BEFORE,
-    gtk.TREE_VIEW_DROP_INTO_OR_AFTER,
+    Gtk.TreeViewDropPosition.BEFORE,
+    Gtk.TreeViewDropPosition.AFTER,
+    Gtk.TreeViewDropPosition.INTO_OR_BEFORE,
+    Gtk.TreeViewDropPosition.INTO_OR_AFTER,
   )
 
 
@@ -65,7 +63,7 @@ class DragTarget(object):
     name,
     scope=0,
     info=0,
-    action=gtk.gdk.ACTION_COPY,
+    action=Gdk.DragAction.COPY,
     pos=POSITIONS,
     data_func=None,
     aux_func=None,
@@ -78,6 +76,7 @@ class DragTarget(object):
     self.pos = pos
     self.data_func = data_func
     self.aux_func = aux_func
+    self.atom = Gdk.Atom.intern(name, True)
 
     try:
       iter(self.pos)
@@ -106,7 +105,7 @@ class DragTarget(object):
 
   def validate(self):
 
-    if not isinstance(self.name, basestring):
+    if not isinstance(self.name, str):
       raise TypeError("'name' is not a string")
 
     if not self.name:
@@ -149,12 +148,12 @@ class DragTarget(object):
 
 class TreeViewDragSourceProxy(object):
 
-  DRAG_BUTTON_MASK = gtk.gdk.BUTTON1_MASK | gtk.gdk.BUTTON3_MASK
+  DRAG_BUTTON_MASK = Gdk.ModifierType.BUTTON1_MASK | Gdk.ModifierType.BUTTON3_MASK
 
   ACTIONS_MASK = (
-    gtk.gdk.ACTION_COPY |
-    gtk.gdk.ACTION_MOVE |
-    gtk.gdk.ACTION_LINK
+    Gdk.DragAction.COPY |
+    Gdk.DragAction.MOVE |
+    Gdk.DragAction.LINK
   )
 
 
@@ -173,7 +172,7 @@ class TreeViewDragSourceProxy(object):
     self._old_rubber_banding = treeview.get_rubber_banding()
     treeview.set_rubber_banding(True)
 
-    self._old_targets = treeview.drag_source_get_target_list() or ()
+    self._old_targets = treeview.drag_source_get_target_list() or Gtk.TargetList.new()
     treeview.enable_model_drag_source(
         self.DRAG_BUTTON_MASK, (), self.ACTIONS_MASK)
 
@@ -217,8 +216,8 @@ class TreeViewDragSourceProxy(object):
 
     self.remove_target(target.name)
 
-    targets = self.treeview.drag_source_get_target_list() or []
-    targets.append(target.gtk_target)
+    targets = self.treeview.drag_source_get_target_list() or Gtk.TargetList.new()
+    targets.add(target.atom, target.scope, target.info)
     self.treeview.drag_source_set_target_list(targets)
 
     self._targets[target.name] = target.copy()
@@ -231,10 +230,10 @@ class TreeViewDragSourceProxy(object):
     target = self._targets.get(name, None)
     if target:
 
-      targets = self.treeview.drag_source_get_target_list() or []
+      targets = self.treeview.drag_source_get_target_list() or Gtk.TargetList.new()
       if target.gtk_target in targets:
 
-        targets.remove(target.gtk_target)
+        targets.remove(target.atom)
         self.treeview.drag_source_set_target_list(targets)
 
       del self._targets[target.name]
@@ -293,13 +292,13 @@ class TreeViewDragSourceProxy(object):
     log.debug("%s System generated: %s", self, bool(event.send_event))
 
     if (self._drag_event and
-        self._drag_event.button == event.button and
+        self._drag_event.button.button == event.button and
         not event.send_event):
 
       log.debug("%s Drag aborted by user", self)
 
       # Do what press event would have done if not trapped
-      widget.do_button_press_event(widget, self._drag_event)
+      widget.do_button_press_event(widget, self._drag_event.button)
 
       self._drag_event = None
       self._drag_path_info = None
@@ -309,7 +308,7 @@ class TreeViewDragSourceProxy(object):
 
   def _do_drag_motion_check(self, widget, event):
 
-    if not self.DRAG_BUTTON_MASK & event.state:
+    if not self.DRAG_BUTTON_MASK & event.get_state():
       return False
 
     if self._drag_event:
@@ -327,14 +326,15 @@ class TreeViewDragSourceProxy(object):
         targets = widget.drag_source_get_target_list()
         if targets:
           context = widget.drag_begin(targets, self.ACTIONS_MASK,
-              self._drag_event.button, event)
+              self._drag_event.button.button, event)
 
           log.debug("%s Drag icon function: %s", self, self.icon_func)
 
           if self.icon_func:
 
             try:
-              context.set_icon_pixbuf(
+              Gtk.drag_set_icon_pixbuf(
+                context,
                 *self.icon_func(
                   widget,
                   int(self._drag_event.x),
@@ -369,7 +369,7 @@ class TreeViewDragSourceProxy(object):
 
     log.debug("%s Do drag-data-get", self)
 
-    target = self._targets.get(selection.target, None)
+    target = self._targets.get(selection.get_target().name(), None)
     if target:
 
       log.debug("%s Data handler: %s", self, target.data_func)
@@ -380,7 +380,7 @@ class TreeViewDragSourceProxy(object):
       try:
 
         target.data_func(widget, path, col, selection, target.gtk_target)
-        context.set_data("selection", selection.copy())
+        context._dnd_selection = selection.copy()
 
       except:
         log.exception("%s Do drag-data-get failed", self)
@@ -394,12 +394,12 @@ class TreeViewDragSourceProxy(object):
 
     log.debug("%s Do drag-data-delete", self)
 
-    selection = context.get_data("selection")
+    selection = context._dnd_selection
 
-    if context.action == gtk.gdk.ACTION_MOVE:
+    if context.get_selected_action() == Gdk.DragAction.MOVE:
 
-      target = self._targets.get(selection.target, None)
-      if target and target.action == context.action:
+      target = self._targets.get(selection.get_target().name(), None)
+      if target and target.action == context.get_selected_action():
 
         log.debug("%s Data handler: %s", self, target.aux_func)
 
@@ -424,9 +424,9 @@ class TreeViewDragSourceProxy(object):
 
     self._drag_event = None
     self._drag_path_info = None
-    context.set_data("selection", None)
+    context._dnd_selection = None
 
-    if context.action == gtk.gdk.ACTION_MOVE:
+    if context.get_selected_action() == Gdk.DragAction.MOVE:
       widget.get_selection().unselect_all()
       widget.queue_draw()
 
@@ -452,7 +452,6 @@ class TreeViewDragDestProxy(object):
 
   AUTOEXPAND_TIMEOUT = 500
 
-
   def __init__(self, treeview):
 
     self.treeview = treeview
@@ -462,7 +461,7 @@ class TreeViewDragDestProxy(object):
     self._expand_timeout = None
     self._expand_row = None
 
-    self._old_targets = treeview.drag_dest_get_target_list() or ()
+    self._old_targets = treeview.drag_dest_get_target_list() or Gtk.TargetList.new()
     treeview.enable_model_drag_dest((), 0)
 
     self._handlers = [
@@ -501,8 +500,8 @@ class TreeViewDragDestProxy(object):
     target.validate()
     self.remove_target(target.name)
 
-    targets = self.treeview.drag_dest_get_target_list() or []
-    targets.append(target.gtk_target)
+    targets = self.treeview.drag_dest_get_target_list() or Gtk.TargetList.new()
+    targets.add(target.atom, target.scope, target.info)
     self.treeview.drag_dest_set_target_list(targets)
 
     self._targets[target.name] = target.copy()
@@ -515,10 +514,10 @@ class TreeViewDragDestProxy(object):
     target = self._targets.get(name, None)
     if target:
 
-      targets = self.treeview.drag_dest_get_target_list() or []
+      targets = self.treeview.drag_dest_get_target_list() or Gtk.TargetList.new()
       if target.gtk_target in targets:
 
-        targets.remove(target.gtk_target)
+        targets.remove(target.atom)
         self.treeview.drag_dest_set_target_list(targets)
 
       del self._targets[target.name]
@@ -529,7 +528,7 @@ class TreeViewDragDestProxy(object):
   def _enable_autoscroll(self):
 
     if not self._scroll_timeout:
-      self._scroll_timeout = gobject.timeout_add(
+      self._scroll_timeout = GObject.timeout_add(
           self.AUTOSCROLL_TIMEOUT, self._do_autoscroll)
 
 
@@ -537,7 +536,7 @@ class TreeViewDragDestProxy(object):
 
     if self._scroll_timeout:
 
-      gobject.source_remove(self._scroll_timeout)
+      GObject.source_remove(self._scroll_timeout)
       self._scroll_timeout = None
 
 
@@ -547,9 +546,9 @@ class TreeViewDragDestProxy(object):
     pos = self.treeview.convert_widget_to_tree_coords(*pos)
     visible = self.treeview.get_visible_rect()
 
-    value = self.treeview.get_hadjustment().value
-    upper = self.treeview.get_hadjustment().upper
-    inc = self.treeview.get_hadjustment().step_increment
+    value = self.treeview.get_hadjustment().get_value()
+    upper = self.treeview.get_hadjustment().get_upper()
+    inc = self.treeview.get_hadjustment().get_step_increment()
 
     left_margin = visible.x + self.AUTOSCROLL_MARGIN
     right_margin = visible.x + visible.width - self.AUTOSCROLL_MARGIN
@@ -564,9 +563,9 @@ class TreeViewDragDestProxy(object):
       inc = inc + pos[0] - right_margin
       self.treeview.get_hadjustment().clamp_page(value+inc, upper)
 
-    value = self.treeview.get_vadjustment().value
-    upper = self.treeview.get_vadjustment().upper
-    inc = self.treeview.get_vadjustment().step_increment
+    value = self.treeview.get_vadjustment().get_value()
+    upper = self.treeview.get_vadjustment().get_upper()
+    inc = self.treeview.get_vadjustment().get_step_increment()
 
     top_margin = visible.y + self.AUTOSCROLL_MARGIN
     bottom_margin = visible.y + visible.height - self.AUTOSCROLL_MARGIN
@@ -587,7 +586,7 @@ class TreeViewDragDestProxy(object):
   def _enable_autoexpand(self):
 
     if not self._expand_timeout:
-      self._expand_timeout = gobject.timeout_add(
+      self._expand_timeout = GObject.timeout_add(
           self.AUTOEXPAND_TIMEOUT, self._do_autoexpand)
 
 
@@ -595,7 +594,7 @@ class TreeViewDragDestProxy(object):
 
     if self._expand_timeout:
 
-      gobject.source_remove(self._expand_timeout)
+      GObject.source_remove(self._expand_timeout)
       self._expand_timeout = None
       self._expand_row = None
 
@@ -633,31 +632,31 @@ class TreeViewDragDestProxy(object):
 
   def _find_target(self, widget, context):
 
-    src = context.get_source_widget()
+    src = Gtk.drag_get_source_widget(context)
     same = widget is src
 
-    for name in context.targets:
-
+    for atom in context.list_targets():
+      name = atom.name()
       target = self._targets.get(name, None)
       if target and (
-        target.action & context.actions or
-        target.action == gtk.gdk.ACTION_ASK
+        target.action & context.get_actions() or
+        target.action == Gdk.DragAction.ASK
       ):
 
         if (target.scope == 0 or
-            target.scope & gtk.TARGET_SAME_WIDGET and same or
-            target.scope & gtk.TARGET_SAME_APP and src or
-            target.scope & gtk.TARGET_OTHER_WIDGET and src and not same or
-            target.scope & gtk.TARGET_OTHER_APP and not src):
+            target.scope & Gtk.TargetFlags.SAME_WIDGET and same or
+            target.scope & Gtk.TargetFlags.SAME_APP and src or
+            target.scope & Gtk.TargetFlags.OTHER_WIDGET and src and not same or
+            target.scope & Gtk.TargetFlags.OTHER_APP and not src):
 
           if src and not same:
 
-            targets = src.drag_source_get_target_list() or ()
+            targets = src.drag_source_get_target_list() or Gtk.TargetList.new()
             for t in targets:
 
               if t[0] == target.name:
 
-                if t[1] & gtk.TARGET_SAME_WIDGET:
+                if t[1] & Gtk.TargetFlags.SAME_WIDGET:
                   target = None
 
                 break
@@ -694,14 +693,14 @@ class TreeViewDragDestProxy(object):
 
           log.debug("%s Sending peek request", self)
 
-          context.set_data("request_info", (path, col, pos))
-          context.set_data("request_type", "peek")
+          context._dnd_request_info = (path, col, pos)
+          context._dnd_request_type = "peek"
 
-          widget.drag_get_data(context, target.name, timestamp)
+          widget.drag_get_data(context, target.atom, timestamp)
 
         else:
 
-          context.drag_status(target.action, timestamp)
+          Gdk.drag_status(context, target.action, timestamp)
           widget.set_drag_dest_row(path, pos)
 
         valid = True
@@ -710,7 +709,7 @@ class TreeViewDragDestProxy(object):
 
       log.debug("%s Drop zone: Invalid", self)
 
-      context.drag_status(0, timestamp)
+      Gdk.drag_status(context, 0, timestamp)
 
     log.debug("%s Do drag-motion ended", self)
 
@@ -729,10 +728,10 @@ class TreeViewDragDestProxy(object):
   def _do_drag_data_received(self,
       widget, context, x, y, selection, info, timestamp):
 
-    request_info = context.get_data("request_info")
-    request_type = context.get_data("request_type")
-    context.set_data("request_info", None)
-    context.set_data("request_type", None)
+    request_info = context._dnd_request_info
+    request_type = context._dnd_request_type
+    context._dnd_request_info = None
+    context._dnd_request_type = None
 
     widget.emit_stop_by_name("drag-data-received")
 
@@ -744,7 +743,7 @@ class TreeViewDragDestProxy(object):
 
       if selection.get_length() > -1:
 
-        target = self._targets.get(selection.target)
+        target = self._targets.get(selection.get_target().name())
 
         if request_type == "get":
 
@@ -770,7 +769,7 @@ class TreeViewDragDestProxy(object):
 
       if request_type == "get":
 
-        delete = result and context.action == gtk.gdk.ACTION_MOVE
+        delete = result and context.get_selected_action() == Gdk.DragAction.MOVE
         context.finish(result, delete, timestamp)
 
         log.debug("%s Success: %s, Should delete: %s", self, result, delete)
@@ -779,14 +778,14 @@ class TreeViewDragDestProxy(object):
 
         log.debug("%s Drop zone: Valid", self)
 
-        context.drag_status(target.action, timestamp)
+        Gdk.drag_status(context, target.action, timestamp)
         widget.set_drag_dest_row(request_info[0], request_info[2])
 
       else:
 
         log.debug("%s Drop zone: Invalid", self)
 
-        context.drag_status(0, timestamp)
+        Gdk.drag_status(context, 0, timestamp)
 
       log.debug("%s Do drag-data-received ended", self)
 
@@ -818,10 +817,10 @@ class TreeViewDragDestProxy(object):
 
         log.debug("%s Sending data request", self)
 
-        context.set_data("request_info", (path, col, pos))
-        context.set_data("request_type", "get")
+        context._dnd_request_info = (path, col, pos)
+        context._dnd_request_type = "get"
 
-        widget.drag_get_data(context, target.name, timestamp)
+        widget.drag_get_data(context, target.atom, timestamp)
 
         drop_finished = True
 
