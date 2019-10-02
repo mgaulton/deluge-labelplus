@@ -75,7 +75,7 @@ class AutolabelBox(CriteriaBox):
     # Determine minimum width
     row = self.add_row()
     self.show()
-    size = self.size_request()
+    min_size, size = self.get_preferred_size()
     self.remove(row)
     self.set_size_request(size.width, -1)
 

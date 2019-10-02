@@ -240,10 +240,10 @@ class TreeViewDragSourceProxy(object):
 
       log.debug("%s Removed target: %r", self, name)
 
-
   def _do_drag_button_press(self, widget, event):
 
-    pos = widget.convert_widget_to_tree_coords(*widget.get_pointer())
+    _, x, y, _ = widget.get_bin_window().get_device_position(event.get_source_device())
+    pos = widget.convert_bin_window_to_tree_coords(x, y)
     if pos[1] < 0:
       return False
 
@@ -540,10 +540,14 @@ class TreeViewDragDestProxy(object):
       self._scroll_timeout = None
 
 
+  def _get_pointer(self):
+    _, x, y, _ = self.treeview.get_bin_window().get_device_position(self.treeview.get_display().get_default_seat().get_pointer())
+    return (x, y)
+
   def _do_autoscroll(self):
 
-    pos = self.treeview.get_pointer()
-    pos = self.treeview.convert_widget_to_tree_coords(*pos)
+    pos = self._get_pointer()
+    pos = self.treeview.convert_bin_window_to_tree_coords(*pos)
     visible = self.treeview.get_visible_rect()
 
     value = self.treeview.get_hadjustment().get_value()
@@ -601,8 +605,7 @@ class TreeViewDragDestProxy(object):
 
   def _do_autoexpand(self):
 
-    pos = self.treeview.get_pointer()
-    pos = self.treeview.convert_widget_to_bin_window_coords(*pos)
+    pos = self._get_pointer()
     path_info = self.treeview.get_path_at_pos(*pos)
 
     if path_info:

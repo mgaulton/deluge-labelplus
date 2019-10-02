@@ -185,7 +185,7 @@ class AddTorrentExt(WidgetEncapsulator):
         self._display_torrent_label(id)
 
 
-    items = (((Gtk.MenuItem, _(STR_NONE)), on_activate, ID_NONE),)
+    items = (((Gtk.MenuItem, {'label': _(STR_NONE)}), on_activate, ID_NONE),)
 
     self._menu = LabelSelectionMenu(self._store.model, on_activate,
       root_items=items)

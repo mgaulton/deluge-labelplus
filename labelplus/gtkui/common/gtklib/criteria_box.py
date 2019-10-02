@@ -60,7 +60,7 @@ class CriteriaBox(Gtk.VBox):
       self.add_row()
 
 
-    super(CriteriaBox, self).__init__(homogeneous, row_spacing)
+    super(CriteriaBox, self).__init__(homogeneous=homogeneous, spacing=row_spacing)
 
     self.connect("destroy", self.destroy)
     self.connect("realize", on_realize)
@@ -70,7 +70,7 @@ class CriteriaBox(Gtk.VBox):
     self._columns = []
     self._rows = []
 
-    button = Gtk.Button("+")
+    button = Gtk.Button(label="+")
     button.set_size_request(25, -1)
     button.connect("clicked", add_row)
 
@@ -183,7 +183,7 @@ class CriteriaBox(Gtk.VBox):
       if pairs and i in indices:
         setter(child, values[indices.index(i)])
 
-    button = Gtk.Button("-")
+    button = Gtk.Button(label="-")
     button.set_size_request(25, -1)
     button.connect("clicked", remove_row)
 

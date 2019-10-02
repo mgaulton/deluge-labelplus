@@ -86,8 +86,8 @@ class NameInputDialog(WidgetEncapsulator):
   TYPE_RENAME = "rename"
 
   DIALOG_SPECS = {
-    TYPE_ADD: (_(TITLE_ADD_LABEL), Gtk.STOCK_ADD, STR_ADD_LABEL),
-    TYPE_RENAME: (_(TITLE_RENAME_LABEL), Gtk.STOCK_EDIT, STR_RENAME_LABEL),
+    TYPE_ADD: (_(TITLE_ADD_LABEL), 'list-add', STR_ADD_LABEL),
+    TYPE_RENAME: (_(TITLE_RENAME_LABEL), 'gtk-edit', STR_RENAME_LABEL),
   }
 
   DIALOG_NAME = 0
@@ -240,14 +240,11 @@ class NameInputDialog(WidgetEncapsulator):
 
     spec = self.DIALOG_SPECS[self._type]
     self._wnd_name_input.set_title(spec[self.DIALOG_NAME])
-    icon = self._wnd_name_input.render_icon(spec[self.DIALOG_ICON],
-      Gtk.IconSize.SMALL_TOOLBAR)
-    self._wnd_name_input.set_icon(icon)
+    self._wnd_name_input.set_icon_name(spec[self.DIALOG_ICON])
 
     self._lbl_header.set_markup("<b>%s:</b>" % _(STR_PARENT))
 
-    self._img_error.set_from_stock(Gtk.STOCK_DIALOG_ERROR,
-      Gtk.IconSize.SMALL_TOOLBAR)
+    self._img_error.set_from_icon_name('dialog-error', Gtk.IconSize.SMALL_TOOLBAR)
 
     if self._type == self.TYPE_RENAME:
       self._btn_revert.show()
@@ -444,14 +441,14 @@ class NameInputDialog(WidgetEncapsulator):
       self._select_parent_label(parent_id)
 
 
-    root_items = (((Gtk.MenuItem, _(STR_NONE)), on_activate, ID_NULL),)
+    root_items = (((Gtk.MenuItem, {'label': _(STR_NONE)}), on_activate, ID_NULL),)
 
     self._menu = LabelSelectionMenu(self._store.model, on_activate,
       root_items=root_items)
     if __debug__: RT.register(self._menu, __name__)
 
     items = labelplus.gtkui.common.gtklib.menu_add_items(self._menu, 1,
-      (((Gtk.MenuItem, _(STR_PARENT)), on_activate_parent),))
+            (((Gtk.MenuItem, {'label': _(STR_PARENT)}), on_activate_parent),))
     if __debug__: RT.register(items[0], __name__)
 
     self._menu.connect("show", on_show_menu)

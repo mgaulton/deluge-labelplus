@@ -145,8 +145,7 @@ class PreferencesExt(WidgetEncapsulator):
     self._lbl_daemon.set_markup("<b>%s</b>" % _(TITLE_DAEMON))
     self._lbl_defaults.set_markup("<b>%s</b>" % _(TITLE_LABEL_DEFAULTS))
 
-    self._img_error.set_from_stock(Gtk.STOCK_DIALOG_ERROR,
-      Gtk.IconSize.SMALL_TOOLBAR)
+    self._img_error.set_from_icon_name('dialog-error', Gtk.IconSize.SMALL_TOOLBAR)
 
     self._setup_radio_button_groups()
     self._setup_autolabel_box()
@@ -572,12 +571,10 @@ class PreferencesExt(WidgetEncapsulator):
   def _set_test_result(self, result):
 
     if result is not None:
-      icon = Gtk.STOCK_YES if result else Gtk.STOCK_NO
-      self._txt_test_criteria.set_icon_from_stock(Gtk.EntryIconPosition.SECONDARY,
-        icon)
+      icon = 'gtk-yes' if result else 'gtk-no'
+      self._txt_test_criteria.set_icon_from_icon_name(Gtk.EntryIconPosition.SECONDARY, icon)
     else:
-      self._txt_test_criteria.set_icon_from_stock(Gtk.EntryIconPosition.SECONDARY,
-        None)
+      self._txt_test_criteria.set_icon_from_icon_name(Gtk.EntryIconPosition.SECONDARY, None)
 
 
   def _toggle_dependents(self, widget):
@@ -614,28 +611,28 @@ class PreferencesExt(WidgetEncapsulator):
       widget.destroy()
 
 
-    path_type = widget.name[widget.name.index("_")+1:widget.name.rindex("_")]
+    name = safe_get_name(widget)
+    path_type = name[name.index("_")+1:name.rindex("_")]
     txt_widget = self.__dict__["_txt_%s_path" % path_type]
 
     dialog = Gtk.FileChooserDialog(_(TITLE_SELECT_FOLDER),
-      self._blk_preferences.get_toplevel(),
-      Gtk.FileChooserAction.SELECT_FOLDER,
-      (
-        Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-        Gtk.STOCK_OK, Gtk.ResponseType.OK,
-      )
-    )
+                                   self._blk_preferences.get_toplevel(),
+                                   Gtk.FileChooserAction.SELECT_FOLDER,
+                                   (_("_Cancel"), Gtk.ResponseType.CANCEL,
+                                    _("_OK"), Gtk.ResponseType.OK))
+
     if __debug__: RT.register(dialog, __name__)
 
     dialog.set_destroy_with_parent(True)
-    dialog.connect("response", on_response)
 
     path = txt_widget.get_text()
     if not os.path.exists(path):
       path = ""
 
     dialog.set_filename(path)
-    dialog.show_all()
+
+    response = dialog.run()
+    on_response(dialog, response)
 
     widgets = labelplus.gtkui.common.gtklib.widget_get_descendents(dialog,
       (Gtk.ToggleButton,), 1)

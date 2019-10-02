@@ -358,7 +358,7 @@ class TorrentViewExt(object):
 
   def _create_context_menu(self):
 
-    item = Gtk.MenuItem(DISPLAY_NAME)
+    item = Gtk.MenuItem(label=DISPLAY_NAME)
     item.set_submenu(Gtk.Menu())
 
     if __debug__: RT.register(item, __name__)
@@ -474,8 +474,8 @@ class TorrentViewExt(object):
 
 
     root_items = (
-      ((Gtk.MenuItem, _(STR_ALL)), on_activate, ID_ALL),
-      ((Gtk.MenuItem, _(STR_NONE)), on_activate, ID_NONE),
+      ((Gtk.MenuItem, {'label': _(STR_ALL)}), on_activate, ID_ALL),
+      ((Gtk.MenuItem, {'label': _(STR_NONE)}), on_activate, ID_NONE),
     )
 
     menu = LabelSelectionMenu(self._store.model, on_activate,
@@ -484,12 +484,12 @@ class TorrentViewExt(object):
 
     items = labelplus.gtkui.common.gtklib.menu_add_items(menu, 2,
       (
-        ((Gtk.MenuItem, _(STR_PARENT)), on_activate_parent),
-        ((Gtk.MenuItem, _(STR_SELECTED)), on_activate_selected),
+        ((Gtk.MenuItem, {'label': _(STR_PARENT)}), on_activate_parent),
+        ((Gtk.MenuItem, {'label': _(STR_SELECTED)}), on_activate_selected),
       )
     )
 
-    root = Gtk.MenuItem(_(TITLE_SET_FILTER))
+    root = Gtk.MenuItem(label=_(TITLE_SET_FILTER))
     root.set_submenu(menu)
 
     if __debug__: RT.register(menu, __name__)
@@ -528,16 +528,16 @@ class TorrentViewExt(object):
         items[0].show()
 
 
-    root_items = (((Gtk.MenuItem, _(STR_NONE)), on_activate, ID_NONE),)
+    root_items = (((Gtk.MenuItem, {'label': _(STR_NONE)}), on_activate, ID_NONE),)
 
     menu = LabelSelectionMenu(self._store.model, on_activate,
       root_items=root_items)
     menu.connect("show", on_show_menu)
 
     items = labelplus.gtkui.common.gtklib.menu_add_items(menu, 1,
-      (((Gtk.MenuItem, _(STR_PARENT)), on_activate_parent),))
+        (((Gtk.MenuItem, {'label': _(STR_PARENT)}), on_activate_parent),))
 
-    root = Gtk.MenuItem(_(TITLE_SET_LABEL))
+    root = Gtk.MenuItem(label=_(TITLE_SET_LABEL))
     root.set_submenu(menu)
 
     if __debug__: RT.register(menu, __name__)
@@ -571,7 +571,7 @@ class TorrentViewExt(object):
         item.hide()
 
 
-    item = Gtk.MenuItem(_(TITLE_LABEL_OPTIONS))
+    item = Gtk.MenuItem(label=_(TITLE_LABEL_OPTIONS))
     item.connect("activate", on_activate)
 
     self._menu.get_submenu().connect("show", on_show, item)
@@ -611,10 +611,8 @@ class TorrentViewExt(object):
       return (pixbuf, 0, 0)
 
 
-    icon_single = self._view.treeview.render_icon(Gtk.STOCK_DND,
-      Gtk.IconSize.DND)
-    icon_multiple = self._view.treeview.render_icon(Gtk.STOCK_DND_MULTIPLE,
-      Gtk.IconSize.DND)
+    icon_single = Gtk.IconTheme.get_default().load_icon('gtk-dnd', Gtk.IconSize.DND, 0)
+    icon_multiple = Gtk.IconTheme.get_default().load_icon('gtk-dnd-multiple', Gtk.IconSize.DND, 0)
 
     src_target = DragTarget(
       name="torrent_ids",

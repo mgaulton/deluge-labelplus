@@ -268,7 +268,7 @@ class LabelStore(object):
       iter_ = store.append(parent_iter, [id_, data[id_]])
       store_map[id_] = iter_
 
-    sorted_model = Gtk.TreeModelSort(store)
+    sorted_model = Gtk.TreeModelSort(model=store)
     sorted_model.set_sort_func(self.LABEL_DATA, data_sort_asc)
     sorted_model.set_sort_column_id(self.LABEL_DATA, Gtk.SortType.ASCENDING)
 

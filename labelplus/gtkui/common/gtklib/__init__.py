@@ -87,7 +87,7 @@ def menu_add_items(menu, pos, specs, *args):
   for spec in specs:
     schematic = spec[0]
     if len(schematic) > 1:
-      item = schematic[0](*schematic[1:])
+      item = schematic[0](**schematic[1])
     else:
       item = schematic[0]()
 
@@ -158,15 +158,24 @@ def widget_get_descendents(widget, types=(), count=-1):
   return descendents
 
 
-class ImageMenuItem(Gtk.ImageMenuItem):
+class ImageMenuItem(Gtk.MenuItem):
 
-  def __init__(self, stock_id=None, label=None, use_underline=True,
-      accel_group=None):
+  def __init__(self, stock_id=None, label=None, use_underline=True):
 
-    super(ImageMenuItem, self).__init__(stock_id, accel_group)
+    super(ImageMenuItem, self).__init__()
+
+    self._box = Gtk.Box.new(Gtk.Orientation.HORIZONTAL, 4)
+    self._box.set_halign(Gtk.Align.START)
+    self.add(self._box)
+
+    if stock_id is not None:
+      self._image = Gtk.Image.new_from_icon_name(stock_id,  Gtk.IconSize.MENU)
+      self._box.pack_start(self._image, True, True, 0)
 
     if label is not None:
-      self.set_label(label)
+      self._label = Gtk.Label.new_with_mnemonic(label)
+      self._label.set_mnemonic_widget(self)
+      self._box.pack_start(self._label, True, True, 0)
 
     self.set_use_underline(use_underline)
 

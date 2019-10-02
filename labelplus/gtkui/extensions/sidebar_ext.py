@@ -37,7 +37,7 @@
 import pickle
 import logging
 
-from gi.repository import GObject, Gtk, Gdk
+from gi.repository import Gtk, Gdk, GLib
 
 import deluge.component
 
@@ -74,6 +74,17 @@ LABEL_DATA = 1
 log = logging.getLogger(__name__)
 
 from labelplus.gtkui import RT
+
+class SidebarMenu(Gtk.Menu):
+  def __init__(self, **kwargs):
+    super(SidebarMenu, self).__init__(**kwargs)
+    self.__title = ID_NULL
+
+  def set_title(self, title):
+    self.__title = title
+
+  def get_title(self, title):
+    return self.__title
 
 
 class SidebarExt(object):
@@ -218,11 +229,11 @@ class SidebarExt(object):
     if __debug__: RT.register(self._store, __name__)
 
     value = self._tree.get_parent().get_vadjustment().get_value()
-    GObject.idle_add(restore_adjustment, value)
+    GLib.idle_add(restore_adjustment, value)
 
     if self._tree.get_window():
       self._tree.get_window().freeze_updates()
-      GObject.idle_add(self._tree.get_window().thaw_updates)
+      GLib.idle_add(self._tree.get_window().thaw_updates)
 
     selection = self._tree.get_selection()
     selection.handler_block_by_func(self._on_selection_changed)
@@ -351,15 +362,20 @@ class SidebarExt(object):
 
     # Override style so expanders are indented
     name = safe_get_name(self._tree)
-    path = self._tree.path()
+    #path = self._tree.get_path()
 
-    rc_string = """
-        style '%s' { GtkTreeView::indent-expanders = 1 }
-        widget '%s' style '%s'
-    """ % (name, path, name)
+    #rc_string = """
+    #    style '%s' { GtkTreeView::indent-expanders = 1 }
+    #    widget '%s' style '%s'
+    #""" % (name, path, name)
 
-    Gtk.rc_parse_string(rc_string)
-    Gtk.rc_reset_styles(self._tree.get_toplevel().get_settings())
+    #Gtk.rc_parse_string(rc_string)
+    #Gtk.rc_reset_styles(self._tree.get_toplevel().get_settings())
+    style_provider = Gtk.CssProvider()
+    style_provider.load_from_data(b"""
+        %s { -GtkTreeView-indent-expanders: true; }
+    """ % name.encode('utf8'))
+    self._tree.get_style_context().add_provider(style_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER)
 
 
   def _uninstall_label_tree(self):
@@ -446,15 +462,16 @@ class SidebarExt(object):
     menu.connect("show", on_show_menu)
 
     items = labelplus.gtkui.common.gtklib.menu_add_items(menu, 0, (
-      ((ImageMenuItem, Gtk.STOCK_ADD, _("_Add Label")), on_add),
+      ((ImageMenuItem, {'stock_id': 'list-add', 'label': _("_Add Label")}), on_add),
       ((Gtk.SeparatorMenuItem,),),
-      ((ImageMenuItem, Gtk.STOCK_ADD, _("Add Sub_label")), on_sublabel),
-      ((ImageMenuItem, Gtk.STOCK_EDIT, _("Re_name Label")), on_rename),
-      ((ImageMenuItem, Gtk.STOCK_REMOVE, _("_Remove Label")), on_remove),
+      ((ImageMenuItem, {'stock_id': 'list-add', 'label': _("Add Sub_label")}), on_sublabel),
+      ((ImageMenuItem, {'stock_id': 'gtk-edit', 'label': _("Re_name Label")}), on_rename),
+      ((ImageMenuItem, {'stock_id': 'list-remove', 'label': _("_Remove Label")}), on_remove),
       ((Gtk.SeparatorMenuItem,),),
-      ((ImageMenuItem, Gtk.STOCK_PREFERENCES, _("Label _Options")), on_option),
+      ((ImageMenuItem, {'stock_id': 'preferences-system', 'label': _("Label _Options")}), on_option),
     ))
 
+    menu.set_reserve_toggle_size(False)
     self._menu = menu
 
     if __debug__: RT.register(self._menu, __name__)
@@ -573,7 +590,7 @@ class SidebarExt(object):
       return False
 
 
-    icon_single = self._tree.render_icon(Gtk.STOCK_DND, Gtk.IconSize.DND)
+    icon_single = Gtk.IconTheme.get_default().load_icon('gtk-dnd', Gtk.IconSize.DND, 0)
 
     src_target = DragTarget(
       name="label_row",
@@ -741,7 +758,6 @@ class SidebarExt(object):
     child = widget.get_nth_page(page_num)
 
     if self._tree.is_ancestor(child):
-      GObject.idle_add(self._tree.get_selection().emit, "changed")
+      GLib.idle_add(self._tree.get_selection().emit, "changed")
     elif self._filterview.treeview.is_ancestor(child):
-      GObject.idle_add(self._filterview.treeview.get_selection().emit,
-        "changed")
+      GLib.idle_add(self._filterview.treeview.get_selection().emit, "changed")

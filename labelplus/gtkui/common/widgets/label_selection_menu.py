@@ -95,7 +95,7 @@ class LabelSelectionMenu(Gtk.Menu):
     id_, data = model[iter_]
     name = data["name"]
 
-    item = Gtk.MenuItem(name)
+    item = Gtk.MenuItem(label=name)
     item.set_name(id_)
     menu.append(item)
     self._items.append(item)
@@ -115,7 +115,7 @@ class LabelSelectionMenu(Gtk.Menu):
 
       if headers:
         self._items += labelplus.gtkui.common.gtklib.menu_add_items(submenu,
-          -1, (((Gtk.MenuItem, name), on_activate, id_),))
+                -1, (((Gtk.MenuItem, {'label': name}), on_activate, id_),))
         self._items.append(labelplus.gtkui.common.gtklib.menu_add_separator(
           submenu))
 
