@@ -34,7 +34,6 @@
 #
 
 
-import pickle
 import copy
 import datetime
 import logging
@@ -60,7 +59,7 @@ import labelplus.core.config.convert
 
 from deluge.plugins.pluginbase import CorePluginBase
 
-from labelplus.common import LabelUpdate
+from labelplus.common import LABEL_UPDATE_TYPE_FULL
 from labelplus.common import LabelPlusError
 from labelplus.common import cmp
 
@@ -533,7 +532,7 @@ class Core(CorePluginBase):
   def get_labels_data(self, timestamp=None):
 
     if timestamp:
-      t = pickle.loads(timestamp)
+      t = timestamp
     else:
       t = labelplus.common.DATETIME_010101
 
@@ -548,31 +547,10 @@ class Core(CorePluginBase):
 
   @deluge.core.rpcserver.export
   @check_init
-  def get_label_updates(self, since=None):
-
-    if since:
-      t = pickle.loads(since)
-    else:
-      t = labelplus.common.DATETIME_010101
-
-    last_changed = max(self._timestamp["labels_changed"],
-      self._timestamp["mappings_changed"])
-
-    if t <= last_changed:
-      u = LabelUpdate(LabelUpdate.TYPE_FULL, datetime.datetime.now(),
-        self._get_labels_data())
-      return pickle.dumps(u)
-    else:
-      return None
-
-
-  # New get_label_updates candidate, use dict instead of LabelUpdate class
-  @deluge.core.rpcserver.export
-  @check_init
   def get_label_updates_dict(self, since=None):
 
     if since:
-      t = pickle.loads(since)
+      t = datetime.datetime.fromisoformat(since)
     else:
       t = labelplus.common.DATETIME_010101
 
@@ -580,13 +558,10 @@ class Core(CorePluginBase):
       self._timestamp["mappings_changed"])
 
     if t <= last_changed:
-      u = LabelUpdate(LabelUpdate.TYPE_FULL, datetime.datetime.now(),
-        self._get_labels_data())
-
       return {
-        "type": u.type,
-        "timestamp": pickle.dumps(u.timestamp),
-        "data": u.data
+        "type": LABEL_UPDATE_TYPE_FULL,
+        "timestamp": datetime.datetime.now().isoformat(),
+        "data": self._get_labels_data()
       }
     else:
       return None

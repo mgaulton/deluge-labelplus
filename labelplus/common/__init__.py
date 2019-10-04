@@ -52,7 +52,7 @@ STATUS_ID = "%s_id" % MODULE_NAME
 STATUS_NAME = "%s_name" % MODULE_NAME
 
 DATETIME_010101 = datetime.datetime(1, 1, 1)
-
+LABEL_UPDATE_TYPE_FULL = "Full"
 
 def get_resource(filename):
 
@@ -62,18 +62,6 @@ def get_resource(filename):
 
   return pkg_resources.resource_filename(
       MODULE_NAME, os.path.join("data", filename))
-
-
-class LabelUpdate(object):
-
-  TYPE_FULL = "Full"
-
-
-  def __init__(self, type_, timestamp, data):
-
-    self.type = type_
-    self.timestamp = timestamp
-    self.data = data
 
 
 # Section: Error

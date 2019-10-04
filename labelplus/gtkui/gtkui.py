@@ -34,7 +34,6 @@
 #
 
 
-import pickle
 import copy
 import datetime
 import logging
@@ -138,7 +137,7 @@ class GtkUI(Gtk3PluginBase):
     log.debug("Waiting for core to be initialized...")
 
     if result == True:
-      client.labelplus.get_label_updates().addCallback(self._finish_init)
+      client.labelplus.get_label_updates_dict().addCallback(self._finish_init)
     else:
       twisted.internet.reactor.callLater(INIT_POLLING_INTERVAL,
         self._poll_init)
@@ -371,8 +370,8 @@ class GtkUI(Gtk3PluginBase):
     labelplus.common.clean_calls(self._calls)
 
     if self.initialized:
-      pickled_time = pickle.dumps(self.last_updated)
-      deferred = client.labelplus.get_label_updates(pickled_time)
+      iso_time = self.last_updated.isoformat()
+      deferred = client.labelplus.get_label_updates_dict(iso_time)
       labelplus.common.deferred_timeout(deferred, REQUEST_TIMEOUT, on_timeout,
         process_result, process_result)
 
@@ -382,13 +381,13 @@ class GtkUI(Gtk3PluginBase):
     if not result:
       return
 
-    update = pickle.loads(result)
+    update = result
 
-    log.debug("Update: Type: %s, Timestamp: %s", update.type,
-      update.timestamp)
+    log.debug("Update: Type: %s, Timestamp: %s", update['type'],
+      update['timestamp'])
 
-    self.last_updated = update.timestamp
-    self.store.update(update.data)
+    self.last_updated = datetime.datetime.fromisoformat(update['timestamp'])
+    self.store.update(update['data'])
 
     for func in list(self._update_funcs):
       try:
