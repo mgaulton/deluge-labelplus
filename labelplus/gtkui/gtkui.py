@@ -57,6 +57,7 @@ from deluge.ui.client import client
 from deluge.plugins.pluginbase import Gtk3PluginBase
 
 from labelplus.common import LabelPlusError
+from labelplus.common import serialize_datetime, deserialize_datetime
 from labelplus.gtkui.common.label_store import LabelStore
 from labelplus.gtkui.extensions.add_torrent_ext import AddTorrentExt
 from labelplus.gtkui.extensions.preferences_ext import PreferencesExt
@@ -370,7 +371,7 @@ class GtkUI(Gtk3PluginBase):
     labelplus.common.clean_calls(self._calls)
 
     if self.initialized:
-      iso_time = self.last_updated.isoformat()
+      iso_time = serialize_datetime(self.last_updated)
       deferred = client.labelplus.get_label_updates_dict(iso_time)
       labelplus.common.deferred_timeout(deferred, REQUEST_TIMEOUT, on_timeout,
         process_result, process_result)
@@ -386,7 +387,7 @@ class GtkUI(Gtk3PluginBase):
     log.debug("Update: Type: %s, Timestamp: %s", update['type'],
       update['timestamp'])
 
-    self.last_updated = datetime.datetime.fromisoformat(update['timestamp'])
+    self.last_updated = deserialize_datetime(update['timestamp'])
     self.store.update(update['data'])
 
     for func in list(self._update_funcs):

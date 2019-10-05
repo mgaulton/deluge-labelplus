@@ -347,5 +347,30 @@ def get_path_mapped_dict(dict_in, path_in, path_out, use_deepcopy=False,
 
   return dict_out
 
+
 def cmp(a, b):
-    return (a > b) - (a < b) 
+  return (a > b) - (a < b)
+
+
+def serialize_datetime(dt):
+  utc_time = dt.time()
+  return {'Y': dt.year,
+          'M': dt.month,
+          'D': dt.day,
+          'H': utc_time.hour,
+          'm': utc_time.minute,
+          's': utc_time.second,
+          'u': utc_time.microsecond,
+          'f': utc_time.fold}
+
+
+def deserialize_datetime(d):
+  return datetime.datetime(d['Y'],
+                           d['M'],
+                           d['D'],
+                           hour=d['H'],
+                           minute=d['m'],
+                           second=d['s'],
+                           microsecond=d['u'],
+                           tzinfo=None,
+                           fold=d['f'])

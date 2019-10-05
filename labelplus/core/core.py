@@ -62,6 +62,7 @@ from deluge.plugins.pluginbase import CorePluginBase
 from labelplus.common import LABEL_UPDATE_TYPE_FULL
 from labelplus.common import LabelPlusError
 from labelplus.common import cmp
+from labelplus.common import serialize_datetime, deserialize_datetime
 
 
 from labelplus.common.literals import (
@@ -550,7 +551,7 @@ class Core(CorePluginBase):
   def get_label_updates_dict(self, since=None):
 
     if since:
-      t = datetime.datetime.fromisoformat(since)
+      t = deserialize_datetime(since)
     else:
       t = labelplus.common.DATETIME_010101
 
@@ -560,7 +561,7 @@ class Core(CorePluginBase):
     if t <= last_changed:
       return {
         "type": LABEL_UPDATE_TYPE_FULL,
-        "timestamp": datetime.datetime.now().isoformat(),
+        "timestamp": serialize_datetime(datetime.datetime.now()),
         "data": self._get_labels_data()
       }
     else:
