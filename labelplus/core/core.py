@@ -188,6 +188,8 @@ class Core(CorePluginBase):
 
     deluge.component.get("EventManager").register_event_handler(
       "TorrentAddedEvent", self.on_torrent_added)
+    deluge.component.get("AlertManager").register_handler(
+      "metadata_received_alert", self.on_torrent_metadata_received)
     deluge.component.get("EventManager").register_event_handler(
       "PreTorrentRemovedEvent", self.on_torrent_removed)
 
@@ -215,6 +217,7 @@ class Core(CorePluginBase):
     log.debug("%s initialized", self.__class__.__name__)
 
     self.__pending_labels = {}
+    self.__pending_magnet_ids = set()
 
 
   def _load_config(self):
@@ -734,6 +737,20 @@ class Core(CorePluginBase):
 
     self._timestamp["mappings_changed"] = datetime.datetime.now()
 
+    if self._torrents[torrent_id].magnet is not None:
+      self.__pending_magnet_ids.add(torrent_id)
+
+
+  @check_init
+  def on_torrent_metadata_received(self, alert):
+    try:
+      torrent_id = str(alert.handle.info_hash())
+    except RuntimeError:
+      return
+    assert(torrent_id in self._torrents)
+    if torrent_id in self.__pending_magnet_ids:
+      self.on_torrent_added(torrent_id, False)
+      self.__pending_magnet_ids.remove(torrent_id)
 
   @check_init
   def on_torrent_removed(self, torrent_id):
