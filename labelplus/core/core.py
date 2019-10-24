@@ -712,7 +712,10 @@ class Core(CorePluginBase):
 
     for id in torrent_ids:
       self._set_torrent_label(id, label_id)
-
+    if 'Label' in component.get("CorePluginManager").get_enabled_plugins():
+          label = component.get("CorePlugin.Label")
+          if lower(label_id) != label._status_get_label(id):
+              label.set_torrent(id, lower(label_id))
     if self._prefs["options"]["move_on_changes"]:
       self._move_torrents(torrent_ids)
 
