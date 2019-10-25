@@ -34,11 +34,11 @@
 #
 
 
-import cPickle
 import copy
 import datetime
 import logging
 import os
+from functools import cmp_to_key
 
 import twisted.internet
 
@@ -59,8 +59,10 @@ import labelplus.core.config.convert
 
 from deluge.plugins.pluginbase import CorePluginBase
 
-from labelplus.common import LabelUpdate
+from labelplus.common import LABEL_UPDATE_TYPE_FULL
 from labelplus.common import LabelPlusError
+from labelplus.common import cmp
+from labelplus.common import serialize_datetime, deserialize_datetime
 
 
 from labelplus.common.literals import (
@@ -115,7 +117,7 @@ class Core(CorePluginBase):
 
     log.debug("Initializing %s...", self.__class__.__name__)
 
-    if not deluge.component.get("TorrentManager").session_started:
+    if deluge.component.get("TorrentManager").get_state() != 'Started':
       deluge.component.get("EventManager").register_event_handler(
         "SessionStartedEvent", self._on_session_started)
       log.debug("Waiting for session to start...")
@@ -186,6 +188,8 @@ class Core(CorePluginBase):
 
     deluge.component.get("EventManager").register_event_handler(
       "TorrentAddedEvent", self.on_torrent_added)
+    deluge.component.get("AlertManager").register_handler(
+      "metadata_received_alert", self.on_torrent_metadata_received)
     deluge.component.get("EventManager").register_event_handler(
       "PreTorrentRemovedEvent", self.on_torrent_removed)
 
@@ -211,6 +215,9 @@ class Core(CorePluginBase):
     twisted.internet.reactor.callLater(1, self._shared_limit_update_loop)
 
     log.debug("%s initialized", self.__class__.__name__)
+
+    self.__pending_labels = {}
+    self.__pending_magnet_ids = set()
 
 
   def _load_config(self):
@@ -299,7 +306,7 @@ class Core(CorePluginBase):
 
   def _normalize_mappings(self):
 
-    for id in self._mappings.keys():
+    for id in list(self._mappings.keys()):
       if id in self._torrents:
         if self._mappings[id] in self._labels:
           self._apply_torrent_options(id)
@@ -529,7 +536,7 @@ class Core(CorePluginBase):
   def get_labels_data(self, timestamp=None):
 
     if timestamp:
-      t = cPickle.loads(timestamp)
+      t = timestamp
     else:
       t = labelplus.common.DATETIME_010101
 
@@ -544,31 +551,10 @@ class Core(CorePluginBase):
 
   @deluge.core.rpcserver.export
   @check_init
-  def get_label_updates(self, since=None):
-
-    if since:
-      t = cPickle.loads(since)
-    else:
-      t = labelplus.common.DATETIME_010101
-
-    last_changed = max(self._timestamp["labels_changed"],
-      self._timestamp["mappings_changed"])
-
-    if t <= last_changed:
-      u = LabelUpdate(LabelUpdate.TYPE_FULL, datetime.datetime.now(),
-        self._get_labels_data())
-      return cPickle.dumps(u)
-    else:
-      return None
-
-
-  # New get_label_updates candidate, use dict instead of LabelUpdate class
-  @deluge.core.rpcserver.export
-  @check_init
   def get_label_updates_dict(self, since=None):
 
     if since:
-      t = cPickle.loads(since)
+      t = deserialize_datetime(since)
     else:
       t = labelplus.common.DATETIME_010101
 
@@ -576,13 +562,10 @@ class Core(CorePluginBase):
       self._timestamp["mappings_changed"])
 
     if t <= last_changed:
-      u = LabelUpdate(LabelUpdate.TYPE_FULL, datetime.datetime.now(),
-        self._get_labels_data())
-
       return {
-        "type": u.type,
-        "timestamp": cPickle.dumps(u.timestamp),
-        "data": u.data
+        "type": LABEL_UPDATE_TYPE_FULL,
+        "timestamp": serialize_datetime(datetime.datetime.now()),
+        "data": self._get_labels_data()
       }
     else:
       return None
@@ -716,17 +699,23 @@ class Core(CorePluginBase):
         label_id not in self._labels):
       raise LabelPlusError(ERR_INVALID_LABEL)
 
-    torrent_ids = [x for x in set(torrent_ids) if x in self._torrents]
-    if not torrent_ids:
+    existing_torrent_ids = [x for x in set(torrent_ids) if x in self._torrents]
+
+    for t in set(torrent_ids):
+      if t not in existing_torrent_ids:
+        self.__pending_labels[t] = label_id
+
+    if not existing_torrent_ids:
       return
+
+    torrent_ids = existing_torrent_ids
 
     for id in torrent_ids:
       self._set_torrent_label(id, label_id)
-      if 'Label' in component.get("CorePluginManager").get_enabled_plugins():
-            label1 = component.get("CorePlugin.Label")
-            if lower(self._get_torrent_label_name(id)) != label1.get_labels(id):
-                label1.set_torrent(id, lower(self._get_torrent_label_name(id)))
-              
+    if 'Label' in component.get("CorePluginManager").get_enabled_plugins():
+          label = component.get("CorePlugin.Label")
+          if lower(label_id) != label._status_get_label(id):
+              label.set_torrent(id, lower(label_id))
     if self._prefs["options"]["move_on_changes"]:
       self._move_torrents(torrent_ids)
 
@@ -736,15 +725,35 @@ class Core(CorePluginBase):
   # Section: Public Callbacks
 
   @check_init
-  def on_torrent_added(self, torrent_id):
+  def on_torrent_added(self, torrent_id, from_state):
+    if from_state:
+        return
 
-    label_id = self._do_autolabel_torrent(torrent_id)
+    if torrent_id in self.__pending_labels:
+      label_id = self.__pending_labels.pop(torrent_id)
+      self._set_torrent_label(torrent_id, label_id)
+    else:
+      label_id = self._do_autolabel_torrent(torrent_id)
 
     if label_id != labelplus.common.label.ID_NONE:
       self._move_torrents([torrent_id])
 
     self._timestamp["mappings_changed"] = datetime.datetime.now()
 
+    if self._torrents[torrent_id].magnet is not None:
+      self.__pending_magnet_ids.add(torrent_id)
+
+
+  @check_init
+  def on_torrent_metadata_received(self, alert):
+    try:
+      torrent_id = str(alert.handle.info_hash())
+    except RuntimeError:
+      return
+    assert(torrent_id in self._torrents)
+    if torrent_id in self.__pending_magnet_ids:
+      self.on_torrent_added(torrent_id, False)
+      self.__pending_magnet_ids.remove(torrent_id)
 
   @check_init
   def on_torrent_removed(self, torrent_id):
@@ -821,7 +830,7 @@ class Core(CorePluginBase):
 
   def _normalize_options(self, options):
 
-    for key in options.keys():
+    for key in list(options.keys()):
       if key not in labelplus.common.config.OPTION_DEFAULTS:
         del options[key]
 
@@ -922,7 +931,7 @@ class Core(CorePluginBase):
 
     if key not in self._sorted_labels:
       self._sorted_labels[key] = sorted(self._labels,
-        cmp=key[0], reverse=key[1])
+        key=cmp_to_key(key[0]), reverse=key[1])
 
       self._timestamp["labels_sorted"] = datetime.datetime.now()
 
@@ -969,7 +978,7 @@ class Core(CorePluginBase):
     label_name = label_name.strip()
 
     try:
-      label_name = unicode(label_name, "utf8")
+      label_name = str(label_name, "utf8")
     except (TypeError, UnicodeDecodeError):
       pass
 
@@ -1006,7 +1015,7 @@ class Core(CorePluginBase):
     label_name = label_name.strip()
 
     try:
-      label_name = unicode(label_name, "utf8")
+      label_name = str(label_name, "utf8")
     except (TypeError, UnicodeDecodeError):
       pass
 
@@ -1067,7 +1076,7 @@ class Core(CorePluginBase):
     dest_name = dest_name.strip()
 
     try:
-      dest_name = unicode(dest_name, "utf8")
+      dest_name = str(dest_name, "utf8")
     except (TypeError, UnicodeDecodeError):
       pass
 
@@ -1118,7 +1127,7 @@ class Core(CorePluginBase):
   def _normalize_label_options(self, options,
       template=labelplus.common.config.LABEL_DEFAULTS):
 
-    for key in options.keys():
+    for key in list(options.keys()):
       if key not in template:
         del options[key]
 
@@ -1451,7 +1460,7 @@ class Core(CorePluginBase):
     # Download settings
     torrent.set_move_completed(self._core["move_completed"])
     torrent.set_move_completed_path(self._core["move_completed_path"])
-    torrent.set_prioritize_first_last(
+    torrent.set_prioritize_first_last_pieces(
       self._core["prioritize_first_last_pieces"])
 
     # Bandwidth settings
@@ -1483,7 +1492,7 @@ class Core(CorePluginBase):
 
     if options["download_settings"]:
       torrent.set_move_completed(options["move_completed"])
-      torrent.set_prioritize_first_last(options["prioritize_first_last"])
+      torrent.set_prioritize_first_last_pieces(options["prioritize_first_last"])
 
       if options["move_completed"]:
         torrent.set_move_completed_path(options["move_completed_path"])
@@ -1600,10 +1609,6 @@ class Core(CorePluginBase):
     if "Label" in pm.get_enabled_plugins():
       label = status.get("label")
       props[labelplus.common.config.autolabel.PROP_LABEL] = [label]
-      if 'Label' in component.get("CorePluginManager").get_enabled_plugins():
-            label1 = component.get("CorePlugin.Label")
-            if lower(self._get_torrent_label_name(id)) != label1.get_labels(id):
-                label1.set_torrent(id, lower(self._get_torrent_label_name(id)))
 
     return labelplus.common.config.autolabel.find_match(props,
       rules, match_all)

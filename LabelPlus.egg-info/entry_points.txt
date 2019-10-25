@@ -1,0 +1,8 @@
+
+    [deluge.plugin.core]
+    LabelPlus = labelplus:CorePlugin
+    [deluge.plugin.gtk3ui]
+    LabelPlus = labelplus:Gtk3UIPlugin
+    [deluge.plugin.web]
+    LabelPlus = labelplus:WebUIPlugin
+    

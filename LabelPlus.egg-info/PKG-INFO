@@ -1,0 +1,14 @@
+Metadata-Version: 1.0
+Name: LabelPlus
+Version: 0.3.2.4
+Summary: Assign labels to torrents
+Home-page: http://github.com/ratanakvlun
+Author: Ratanak Lun
+Author-email: ratanakvlun@gmail.com
+License: GPLv3
+Description: 
+        Assign labels to torrents
+        
+        Based on Label 0.2
+        by Martijn Voncken
+Platform: UNKNOWN
